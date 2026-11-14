@@ -304,7 +304,7 @@ function prepare(sc) {
   sc.trees.sort((a, b) => b[1] - a[1]);
 
   // 駅間の巡航速度：GTFS の所要時間から台形の速度曲線を逆算
-  const sts = sc.stations.map((s) => ({ name: s.name, s: s.s, run: s.run, code: s.code || '', en: s.en || '', xfer: s.xfer || [] }));
+  const sts = sc.stations.map((s) => ({ name: s.name, s: s.s, run: s.run, dwell: s.dwell || 0, code: s.code || '', en: s.en || '', xfer: s.xfer || [] }));
   for (let i = 0; i < sts.length - 1; i++) {
     const D = sts[i + 1].s - sts[i].s, T = sts[i].run || 60, a = P.ACC;
     const disc = a * a * T * T - 4 * a * D;
@@ -856,9 +856,19 @@ function resize() {
     const mx = Math.round(SCN.visR * k);
     // 横持ちは上・下・右を少しあけて、地図の後ろに車内（ドアの向こうの壁・窓）を見せる
     const m = Math.max(8, Math.min(20, Math.round(H * 0.028)));
-    const r = portrait ? { x: 0, y: sh, w: W, h: H - sh } : { x: mx, y: m, w: W - mx - m, h: H - 2 * m };
+    const col = portrait ? { x: 0, y: sh, w: W, h: H - sh } : { x: mx, y: m, w: W - mx - m, h: H - 2 * m };
+    // 上は車内の案内画面、下は地図
+    const lh = portrait ? Math.round(Math.min(col.h * 0.45, col.w * 0.66)) : Math.round(Math.max(160, Math.min(col.h * 0.42, col.w * 0.82)));
+    const gap = portrait ? 0 : m;
+    const r = { x: col.x, y: col.y + lh + gap, w: col.w, h: col.h - lh - gap };
     Object.assign(mp.style, { left: `${r.x}px`, top: `${r.y}px`, width: `${r.w}px`, height: `${r.h}px` });
     mp.classList.toggle('portrait', portrait);
+    const lc2 = document.getElementById('lcd');
+    if (lc2) {
+      Object.assign(lc2.style, { left: `${col.x}px`, top: `${col.y}px`, width: `${col.w}px`, height: `${lh}px`, fontSize: `${Math.max(9, Math.min(lh / 18, col.w / 24))}px` });
+      lc2.classList.toggle('portrait', portrait); lc2.classList.add('show');
+      LCD.key = '';
+    }
     window.dispatchEvent(new Event('insetresize'));
   }
   buildInterior();
@@ -2019,8 +2029,59 @@ function updateHud() {
   const hb = document.getElementById('hud');
   if (hb) { hb.classList.toggle('playing', G.state === 'play'); hb.classList.toggle('paused', !!paused); hb.classList.toggle('auto', !!G.auto); }
   hudSet('autoLabel', G.auto ? 'オート実行中' : 'オート実行');
-  const nx = trainSpeed(G.S).next;
-  hudSet('hNext', nx ? nx.name : '');
+  updateLcd();
+}
+
+// ---- 車内の案内画面: 行き先、次の駅（大きく）、現在時刻、号車、この先の駅までの分（GTFS の所要時間）・駅番号・乗りかえ ----
+const LCD = { key: '', min: '' };
+function lcdMinutes(i0) { // いまの位置から、駅 i0, i0+1, ... までの分（都営 GTFS の所要時間と停車時間。ゲームの速さではなく実際の時刻表）
+  const st = SC.sts, sp = trainSpeed(G.S), a = sp.prev, b = sp.next, ia = st.indexOf(a);
+  let sec = G.dwell > 0 ? 0 : (a.run || 60) * Math.max(0, Math.min(1, (b.s - G.S) / Math.max(1, b.s - a.s)));
+  const out = [];
+  for (let i = ia + 1; i < st.length; i++) {
+    if (i > ia + 1) sec += (st[i - 1].dwell || 0) + (st[i - 1].run || 60);
+    if (i >= i0) out.push(Math.max(1, Math.ceil(sec / 60)));
+  }
+  return out;
+}
+function updateLcd() {
+  const el = document.getElementById('lcd');
+  if (!el || !SC || !G) return;
+  const st = SC.sts, sp = trainSpeed(G.S), b = sp.next, ib = st.indexOf(b);
+  const atSt = G.dwell > 0 || (G.state === 'title' && Math.abs(G.S - sp.prev.s) < 30);
+  const cur = atSt ? (G.dwell > 0 ? st.indexOf(b) : st.indexOf(sp.prev)) : -1;
+  const nxt = cur >= 0 ? cur : ib;                                       // 大きく出す駅
+  const soon = cur < 0 && b.s - G.S < 250;
+  const label = cur >= 0 ? 'ただいま' : soon ? 'まもなく' : '次は';
+  const en = Math.floor(G.t / 5) % 3 === 2;                              // 3 回に 1 回は英語で
+  const d = new Date(), clock = `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+  const ncol = Math.max(3, Math.min(8, Math.floor(el.clientWidth / (parseFloat(el.style.fontSize) * 3.1))));
+  const first = cur >= 0 ? cur + 1 : ib;
+  const list = st.slice(first, first + ncol - 1);
+  const mins = lcdMinutes(first);
+  const key = [label, nxt, en, clock, ncol, first, mins.slice(0, list.length).join(',')].join('|');
+  if (key === LCD.key) return;
+  LCD.key = key;
+  const S0 = st[nxt], dest = st[st.length - 1];
+  const code = (c) => `<span class="code">${c.slice(0, 2)}<br>${c.slice(2)}</span>`;
+  // 縦書きの駅名は、文字数に合わせて小さくして 5.2em に収める
+  const cols = [`<div class="col"><span class="vnw"></span></div>`].concat(list.map((x) => `<div class="col"><span class="vnw"><span class="vn" style="font-size:${Math.min(1.05, 5.2 / x.name.length).toFixed(2)}em">${x.name}</span></span></div>`));
+  const dots = [`<div class="dot now"><i></i></div>`].concat(list.map((x, i) => `<div class="dot${i === 0 && cur < 0 ? ' next' : ''}"><i>${mins[i]}</i></div>`));
+  const codes = [`<div class="col"><span class="xf"></span></div>`].concat(list.map((x) => `<div class="col">${code(x.code)}<span class="xf">${(x.xfer || []).slice(0, 2).join('<br>')}</span></div>`));
+  el.innerHTML = `
+    <div class="head">
+      <div class="kind"><b>各駅停車</b><span class="dest">${dest.name}<small>ゆき</small></span></div>
+      <div class="nx">
+        <div class="r1"><span class="lab">${en ? (cur >= 0 ? 'Now stopping at' : 'Next') : label}</span><span class="clock">現在時刻<b>${clock}</b></span><span class="car"><b>2</b>号車</span></div>
+        <div class="r2">${code(S0.code)}<span class="name${en ? ' en' : ''}">${en ? S0.en : S0.name}</span></div>
+      </div>
+    </div>
+    <div class="body">
+      <div class="cols">${cols.join('')}</div>
+      <div class="band"><div class="bar"></div><div class="arrow"></div><div class="dots">${dots.join('')}</div></div>
+      <div class="cols">${codes.join('')}</div>
+    </div>
+    <div class="foot">（分）は時刻表での所要時間のめやすです</div>`;
 }
 function drawFrame() {
   const L = LAYOUT, k = PX / DPR;
