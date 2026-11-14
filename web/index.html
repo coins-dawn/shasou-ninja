@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>ぼくらの窓枠ニンジャ</title>
+<meta name="description" content="電車の窓の外を、忍者が屋根から屋根へ。ドット絵の横スクロールゲーム">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#1d1a26">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+<link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
+<style>
+  :root { --bg:#1d1a26; --fg:#f4eedc; --muted:#a9a196; --accent:#ffc843; --line:#5c5470; }
+  html,body { margin:0; height:100%; background:var(--bg); color:var(--fg);
+    font-family:"DotGothic16","Hiragino Sans","Noto Sans JP",monospace; overflow:hidden;
+    -webkit-user-select:none; user-select:none; touch-action:manipulation; }
+  #wrap { position:fixed; inset:0; display:flex; flex-direction:column; }
+  #main { flex:1 1 0; min-height:0; position:relative; background:#ffffff; }
+  #c { position:absolute; inset:0; width:100%; height:100%; display:block; }
+  #map { position:absolute; background:#dfe6ea; border:4px solid #2a2a30; border-radius:6px; overflow:hidden; box-sizing:border-box;
+    pointer-events:none; box-shadow:4px 5px 0 rgba(20,18,30,.35); }
+  #map.portrait { border:0; border-top:4px solid #2a2a30; border-radius:0; box-shadow:none; }
+  #map .maplibregl-ctrl-attrib, #map .maplibregl-ctrl-attrib a, #map .maplibregl-ctrl-attrib-button { pointer-events:auto; }
+  #hud { position:absolute; left:0; right:0; top:0; z-index:10; display:flex; flex-wrap:wrap; align-items:stretch; gap:4px 10px;
+    padding:8px; background:rgba(29,26,38,.86); color:var(--fg); box-sizing:border-box; }
+  #hud .stat { flex:1 1 0; min-width:64px; display:flex; flex-direction:column; justify-content:center; line-height:1.1; }
+  #hud small { font-size:11px; color:var(--muted); }
+  #hud b { font-weight:400; font-size:clamp(17px, 1.9vw, 26px); white-space:nowrap; }
+  #hud .next { flex:1 0 100%; font-size:14px; }
+  #hud .next small { font-size:11px; color:var(--muted); margin-right:4px; }
+  #hud #hDist { color:#ff8a5b; }
+  #hud .unit { font-size:12px; color:var(--muted); margin-left:2px; }
+  #hud .btns { display:flex; gap:6px; flex:0 0 auto; margin-left:auto; }
+  #pauseBtn, #autoBtn { pointer-events:auto; display:none; align-items:center; gap:8px; font-size:14px; padding:8px 12px; background:#4a4360; color:#fff; flex:0 0 auto; }
+  #hud.playing #pauseBtn, #hud.playing #autoBtn { display:flex; }
+  #hud.auto #autoBtn { background:#5fd38a; color:#14301f; }
+  #hud.paused #pauseBtn { background:var(--accent); color:#211d2c; }
+  #pauseBtn .bars { display:inline-block; width:12px; height:14px; border-left:4px solid currentColor; border-right:4px solid currentColor; box-sizing:border-box; }
+  #hud .legend { flex:1 0 100%; display:flex; flex-wrap:wrap; gap:4px 12px; font-size:11px; color:var(--muted); }
+  #hud .legend i { display:inline-block; width:10px; height:10px; margin-right:4px; vertical-align:-1px; border:1px solid #14121b; }
+  #map.warn { animation:warnEdge .5s steps(2) infinite; }
+  @keyframes warnEdge { 0% { border-color:#f0503c; box-shadow:4px 5px 0 rgba(20,18,30,.35), inset 0 0 0 4px #f0503c; } 100% { border-color:#2a2a30; } }
+  .warn-pin { font:13px "DotGothic16",sans-serif; color:#fff; background:#d8382a; padding:2px 7px 2px 4px; border:2px solid #fff;
+    box-shadow:0 0 0 2px #7a1a14; white-space:nowrap; animation:warnBob .6s steps(2) infinite; }
+  .warn-pin b { display:inline-block; width:15px; height:15px; line-height:15px; text-align:center; margin-right:4px; background:#ffd23f; color:#7a1a14; font-weight:400; }
+  .warn-pin::after { content:""; position:absolute; left:50%; bottom:-9px; margin-left:-6px; border:6px solid transparent; border-top-color:#fff; border-bottom:0; }
+  @keyframes warnBob { 0% { margin-top:0; } 100% { margin-top:-4px; } }
+  .ninja-sprite { width:48px; height:39px; image-rendering:pixelated; image-rendering:crisp-edges; filter:drop-shadow(0 0 2px #fff); }
+  .st-label { font:12px "DotGothic16",sans-serif; color:#1e1b38; background:rgba(255,255,255,.88); padding:1px 5px; border:1px solid #1e1b38; white-space:nowrap; transform:translateY(-14px); }
+  .maplibregl-ctrl-attrib { font-size:10px; }
+  #credit { font-size:10px; line-height:1.4; color:var(--muted); padding:4px 10px 6px; background:#14121b;
+    font-family:"Hiragino Sans","Noto Sans JP",sans-serif; }
+  #credit a { color:var(--muted); }
+  .panel { position:fixed; left:50%; top:50%; transform:translate(-50%,-50%);
+    width:min(420px, calc(100% - 40px)); max-height:calc(100% - 40px); overflow:auto;
+    background:#211d2c; border:4px solid var(--fg); box-shadow:0 0 0 4px #211d2c, 6px 6px 0 4px rgba(0,0,0,.4);
+    padding:16px 18px 14px; box-sizing:border-box; display:none; }
+  .panel.show { display:block; }
+  .panel h1 { font-size:26px; margin:0 0 6px; letter-spacing:.08em; font-weight:400; }
+  .panel h2 { font-size:15px; margin:14px 0 6px; color:var(--muted); font-weight:400; }
+  .panel p { margin:6px 0; font-size:14px; line-height:1.7; }
+  .big { font-size:34px; color:var(--accent); }
+  button { font:inherit; font-size:16px; padding:8px 16px; border:0; background:var(--accent); color:#211d2c;
+    cursor:pointer; box-shadow:inset -3px -3px 0 rgba(0,0,0,.25), inset 3px 3px 0 rgba(255,255,255,.35); }
+  button.sub { background:#4a4360; color:var(--fg); }
+  .row { display:flex; gap:10px; margin-top:12px; flex-wrap:wrap; }
+  select { font:inherit; font-size:16px; padding:6px 8px; border:3px solid var(--line); background:#14121b; color:var(--fg); }
+  input { font:inherit; font-size:16px; padding:7px 10px; border:3px solid var(--line); background:#14121b;
+    color:var(--fg); flex:1; min-width:0; border-radius:0; }
+  ol { margin:4px 0 0; padding-left:26px; font-size:14px; line-height:1.8; }
+  ol li.me { color:var(--accent); }
+  ol small { color:var(--muted); }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="main">
+    <canvas id="c"></canvas>
+    <div id="map"><div id="hud">
+      <div class="stat"><small>きょり</small><b id="hDist">0 m</b></div>
+      <div class="stat"><small>時速</small><b><span id="hKmh">0</span><span class="unit">km</span></b></div>
+      <div class="stat"><small>駅</small><b><span id="hSt">0</span><span class="unit">駅</span></b></div>
+      <div class="btns"><button id="autoBtn"><span id="autoLabel">オート実行</span></button><button id="pauseBtn"><span class="bars"></span><span>ストップ</span></button></div>
+      <div class="next"><small>つぎは</small> <span id="hNext"></span></div>
+      <div class="legend"><span><i style="background:#ffd23f"></i>乗れる屋根</span><span><i style="background:#ff8a1f"></i>いまいる屋根</span></div>
+    </div></div>
+  </div>
+  <div id="credit"></div>
+</div>
+
+<div class="panel" id="title">
+  <h1>ぼくらの窓枠ニンジャ</h1>
+  <p id="lineName">日暮里・舎人ライナー ／ 左の窓</p>
+  <p>屋根から屋根へ飛び移って、電車についていこう。<br>
+  地面に落ちるか、窓の外に置いていかれたらおしまい。</p>
+  <p style="color:var(--muted);font-size:13px">タップ／スペース：ジャンプ（長押しで高く・空中でもう1回）<br>
+  壁にぶつかったら長押し：壁を駆け上がる</p>
+  <p style="color:var(--muted);font-size:13px">窓の外の建物は、ほんとうの線路沿いの建物です（国土交通省 PLATEAU）。</p>
+  <div class="row" style="align-items:center"><label for="startSt" style="font-size:14px">乗る駅</label>
+    <select id="startSt"></select></div>
+  <div class="row"><button id="start">しゅっぱつ</button><button class="sub" id="showRank">ランキング</button></div>
+</div>
+
+<div class="panel" id="pause">
+  <h1>一時停止</h1>
+  <p style="color:var(--muted);font-size:13px">P キー／Esc でも止めたり、再開したりできます。</p>
+  <div class="row"><button id="resume">つづける</button><button class="sub" id="toTitle">駅をえらびなおす</button></div>
+</div>
+
+<div class="panel" id="over">
+  <p id="overWhy" style="color:var(--muted)"></p>
+  <div class="big" id="overScore"></div>
+  <p id="overWhere"></p>
+  <p id="overNote" style="display:none;color:var(--muted);font-size:13px">オート実行を使ったので、この回の記録はランキングに残せません。</p>
+  <div class="row" id="nameRow"><input id="name" maxlength="12" placeholder="なまえ"><button id="save">記録する</button></div>
+  <h2>ランキング</h2>
+  <ol id="rankOver"></ol>
+  <div class="row"><button id="retry">もう一回</button><button class="sub" id="overTitle">駅をえらぶ</button></div>
+</div>
+
+<div class="panel" id="rank">
+  <h2 style="margin-top:0">ランキング</h2>
+  <ol id="rankList"></ol>
+  <div class="row"><button class="sub" id="closeRank">もどる</button></div>
+</div>
+
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="game.js?v=20261116i"></script>
+<script src="map3d.js?v=20261116i"></script>
+<script src="pax.js?v=20261116i"></script>
+</body>
+</html>
