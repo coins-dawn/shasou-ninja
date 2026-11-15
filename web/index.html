@@ -47,11 +47,14 @@
   /* せまい画面（スマホ）: 左の欄は上の帯（題名と三本線）に。設定は遊ぶ前だけ、真ん中に重ねて出す */
   body.narrow #wrap { flex-direction:column; }
   body.narrow #side { flex:0 0 auto; padding:6px 10px 6px 14px; overflow:visible; }
-  body.narrow #side h1 { font-size:20px; cursor:pointer; }
+  body.narrow #side h1 { font-size:20px; cursor:pointer; display:flex; align-items:center; white-space:nowrap; padding:8px 0; } /* 1 行で、アイコンは最後 */
+  body.narrow #side h1 br { display:none; }
+  body.narrow #logoNinja { order:3; top:0; margin:-.6em 0 -.6em -.25em; width:2.2em; height:1.8em; }
   body.narrow #hamb { display:block; }
-  body.narrow #side .cfg { display:none; position:fixed; z-index:30; left:50%; top:76px; transform:translateX(-50%);
-    width:min(88vw, 380px); max-height:calc(100% - 96px); overflow-y:auto; box-sizing:border-box; padding:16px; background:#000;
-    border-radius:6px; box-shadow:0 6px 24px rgba(0,0,0,.45); }
+  /* 見た目は「このサービスについて」（.panel）とそろえる */
+  body.narrow #side .cfg { display:none; position:fixed; z-index:30; left:50%; top:calc(50% + 28px); transform:translate(-50%,-50%);
+    width:min(420px, calc(100% - 40px)); max-height:calc(100% - 96px); overflow-y:auto; box-sizing:border-box; padding:16px 18px 14px;
+    background:#211d2c; border:4px solid var(--fg); box-shadow:0 0 0 4px #211d2c, 6px 6px 0 4px rgba(0,0,0,.4); }
   body.narrow.menu #side .cfg { display:flex; }
   body.narrow #side .howto, body.narrow #showRank, body.narrow #aboutBtn { display:none; }
   body.narrow #side .actions { margin-top:4px; }
@@ -170,7 +173,7 @@
 <div id="wrap">
   <aside id="side">
     <div class="brand">
-      <h1 id="titleH">ぼくらの<canvas id="logoNinja" width="44" height="36" aria-hidden="true"></canvas><br>車窓ニンジャ</h1>
+      <h1 id="titleH"><span>ぼくらの</span><canvas id="logoNinja" width="44" height="36" aria-hidden="true"></canvas><br><span>車窓ニンジャ</span></h1>
       <!-- 三本線: Iconify mdi:menu（Apache-2.0） -->
       <button id="hamb" aria-label="メニュー" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2z"/></svg></button>
     </div>
@@ -251,8 +254,8 @@
 </div>
 
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-<script src="game.js?v=20261116v"></script>
-<script src="map3d.js?v=20261116v"></script>
-<script src="pax.js?v=20261116v"></script>
+<script src="game.js?v=20261116y"></script>
+<script src="map3d.js?v=20261116y"></script>
+<script src="pax.js?v=20261116y"></script>
 </body>
 </html>
