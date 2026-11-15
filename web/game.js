@@ -106,7 +106,7 @@ const VIEW = 'section';
 const OFF = (d) => (VIEW === 'section' ? 0 : SC.HH * (1 - Math.exp(-d / SC.LAM))); // 奥行き → 見かけの持ち上がり
 
 // ---- 左の欄の設定（「しゅっぱつ」で G.opts に写す） ----
-const OPTS = { size: 'S', diff: 'easy', crowd: 'low' };
+const OPTS = { size: 'S', diff: 'easy', crowd: 'low', cam: 'fixed' };
 window.OPTS = OPTS;
 // 景色・車内のドットの細かさ。2 = 忍者と同じ細かさ（忍者の 1 ドット = 景色の 1 ドット）、1 = 元の粗さ（忍者だけ 2 倍細かい）
 const DOT = (() => { const m = /dot=(\d)/.exec(location.search); return m ? Math.max(1, +m[1]) : 2; })();
@@ -2372,9 +2372,11 @@ function frame(ts) {
     for (let i = 0; i < n; i++) step(sdt / n);
   } else if (G) G.t += dt;
   if (G) {
-    // カメラは一番下に固定（忍者が窓の上に出たら吹き出しで知らせる）。出発の屋根にいるあいだだけ忍者についていく
+    // カメラ「固定」: 一番下に固定（忍者が窓の上に出たら吹き出しで知らせる）。出発の屋根にいるあいだだけ忍者についていく
+    // カメラ「ニンジャをおいかける」: 窓の上に出そうなときだけ上げる（すぐ反映。見た目だけでポイントには関係しない）
     if (G.camHold && ((G.onGround && G.bid !== G.startBid) || G.y < G.startY - 1)) G.camHold = false;
-    const need = G.camHold ? Math.max(0, G.y + 5 - (SCN.gY - SCN.SW.y0) / KL + 1) : 0;
+    const follow = OPTS.cam === 'follow' || G.camHold;
+    const need = follow ? Math.max(0, G.y + 5 - (SCN.gY - SCN.SW.y0) / KL + 1) : 0;
     G.camUp = need > G.camUp ? G.camUp + (need - G.camUp) * Math.min(1, dt * 8) : Math.max(need, G.camUp - dt * 25);
     drawFrame();
     drawLogoNinja();
@@ -2407,12 +2409,12 @@ async function main() {
 
   // 左の欄の設定
   const sync = () => {
-    OPTS.size = $('sizeSel').value; OPTS.diff = $('diffSel').value; OPTS.crowd = $('crowdSel').value;
+    OPTS.size = $('sizeSel').value; OPTS.diff = $('diffSel').value; OPTS.crowd = $('crowdSel').value; OPTS.cam = $('camSel').value;
     const m = optMult(OPTS);
     $('multNote').textContent = m > 1 ? `ポイント ×${m}` : 'ポイント ×1（きょり）';
     if (!G || G.state !== 'play') { newGame(startFrom); G.state = 'title'; } // 遊んでいないときは、その設定で見せる
   };
-  for (const id of ['sizeSel', 'diffSel', 'crowdSel']) $(id).onchange = sync;
+  for (const id of ['sizeSel', 'diffSel', 'crowdSel', 'camSel']) $(id).onchange = sync;
 
   resize();
   newGame(); G.state = 'title';
