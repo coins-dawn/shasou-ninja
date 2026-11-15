@@ -803,14 +803,14 @@ function paxSprite(L, pose, u, seatH, grabY, frame = 0, blink = false, v = '') {
 // ---- 車内の場所: 左右の座席、つり革の下、ドアの前 ----
 function paxSlots() {
   const S = SCN, X = S.X, Y = S.Y;
-  const u = (S.SW.y1 - S.SW.y0) / 1.0;            // 側窓の高さ ≒ 1m
+  const u = (S.winH0 || (S.SW.y1 - S.SW.y0)) / 1.0; // 側窓の高さ ≒ 1m（縦持ちで窓が伸びても元の高さ）
   const fl = S.floorY, seatTop = Y(0.77);
   const seatW = 0.46 * u;
   const seats = [], bench = [];
   for (let x = X(0.445) - seatW * 0.55, i = 0; x > seatW * 0.3; x -= seatW, i++) { seats.push(Math.round(x)); bench.push(['L', i]); }
   const visR = S.visR || LW; // その右は地図の下
   for (let x = X(0.895) + seatW * 0.55, i = 0; x < visR - seatW * 0.3; x += seatW, i++) { seats.push(Math.round(x)); bench.push(['R', i]); }
-  const winH = S.SW.y1 - S.SW.y0;
+  const winH = S.winH0 || (S.SW.y1 - S.SW.y0);
   const grab = (st) => (fl - (st.y + Math.round(winH * 0.3) + Math.round(winH * 0.075))) / u;
   // 立つ場所: 1 本おきのつり革の下（手がつり革に来るよう体は少し左）と、ドアの前
   const stands = [];

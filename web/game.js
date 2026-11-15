@@ -834,21 +834,27 @@ function resize() {
   const hudEl = document.getElementById('hud');
   if (hudEl) { hudEl.classList.toggle('portrait', portrait); hudEl.classList.toggle('two', portrait && W < 380); if (portrait) hudEl.style.width = `${W}px`; }
   const hudH = portrait && hudEl ? (hudEl.offsetHeight || 44) : 0;
-  // 場面の高さは幅の 0.7 倍まで。残りはすべて案内画面に（駅名の欄が伸びる）
-  const sw = W, sh = portrait ? Math.max(120, Math.min(Math.round(W * 0.7), H - hudH - 220)) : H;
+  // 場面は画面の縦 2/3（案内画面に最低 200px は残す）。残りは案内画面に（駅名の欄が伸びる）
+  const sw = W, sh = portrait ? Math.max(120, Math.min(Math.round(H * 2 / 3), H - hudH - 200)) : H;
   const lcdH = portrait ? H - hudH - sh : 0;
-  const coreW = portrait ? Math.min(sw, sh / 0.66) : Math.min(sh / 0.66, trainW / 0.9);
+  // 縦持ちも右はドアの枠まで（ドアの上の案内表示が右はしで読める）
+  const coreW = portrait ? sw / 0.9 : Math.min(sh / 0.66, trainW / 0.9);
   SCN = { x: 0, y: portrait ? lcdH : 0, w: sw, h: sh, portrait, side };
   PX = Math.max(2, Math.round((coreW * DPR) / (portrait ? 300 : 480)));
   LW = Math.ceil((sw * DPR) / PX); LH = Math.ceil((sh * DPR) / PX);
   low.width = LW; low.height = LH;
-  const cw = portrait ? Math.min(LW, LH / 0.66) : (coreW * DPR) / PX, ch = cw * 0.66;
-  const ox = portrait ? (LW - cw) / 2 : Math.round((trainW * DPR) / PX - 0.88 * cw - 4); // ドアの枠の右はしが地図の左はし
+  // 縦持ちは車内を縦に伸ばして場面の高さいっぱいに（側窓が高くなり、上の屋根まで見える）
+  const cw = (coreW * DPR) / PX, ch0 = cw * 0.66;
+  const ox = Math.round((trainW * DPR) / PX - 0.88 * cw - 4); // ドアの枠の右はしが場面（横持ちは地図）の左はし
   // 床が見える高さを半分にするため、絵を床の高さの半分だけ下げる（上は天井が広がる）
+  // 縦持ちは車内を引き伸ばさず、場面の上下の真ん中に置く（上下の余りは黒）
+  const ch = ch0;
   const oy0 = (LH - ch) * 0.45, floor0 = LH - oy0 - 0.885 * ch;
-  const oy = oy0 + floor0 / 2;
-  const X = (f) => Math.round(ox + f * cw), Y = (f) => Math.round(oy + f * ch);
-  SCN.X = X; SCN.Y = Y; SCN.core = { ox, oy, cw, ch };
+  const oy = portrait ? Math.round((LH - ch) / 2) : oy0 + floor0 / 2;
+  const X = (f) => Math.round(ox + f * cw);
+  const Y = (f) => Math.round(f <= 0.57 ? oy + f * ch : oy + 0.57 * ch + (f - 0.57) * ch0);
+  const Yb = (f) => Math.round(oy + 0.57 * ch - (0.57 - f) * ch0); // 側窓の下のふちから、元の縮尺で測った高さ
+  SCN.X = X; SCN.Y = Y; SCN.Yb = Yb; SCN.core = { ox, oy, cw, ch: ch0 }; SCN.winH0 = Math.round(0.44 * ch0);
   // 側窓は左はしまで、右の次の側窓は右はしまで
   const SW = { x0: -6, x1: X(0.36), y0: Y(0.13), y1: Y(0.57) };   // ドアの手前（0.36〜0.535）は広告のある壁
   const DR = { x0: X(0.535), x1: X(0.88), y0: Y(0.105), y1: Y(0.885) };
@@ -1024,7 +1030,7 @@ function buildInterior() {
   const ads = [[X(0.378), X(0.52)], [X(0.9), X(1.042)]];
   if (!AD_PICK) AD_PICK = Object.keys(AD_ART).sort(() => Math.random() - 0.5).slice(0, 2);
   ads.forEach(([ax0, ax1], i) => {
-    const ay = Y(0.17), ah = Y(0.33) - Y(0.17), aw = ax1 - ax0;
+    const ay = S.Yb(0.17), ah = S.Yb(0.33) - S.Yb(0.17), aw = ax1 - ax0;
     if (ax1 < 0 || ax0 > iw) return;
     R(ax0 - 2, ay - 2, aw + 4, ah + 4, '#a7adb4'); R(ax0 - 1, ay - 1, aw + 2, ah + 2, '#d8dce0');
     R(ax0, ay, aw, ah, '#fbfbf8');
@@ -1085,7 +1091,7 @@ function buildInterior() {
   rack(0, X(0.53)); rack(X(0.885), iw);
 
   // つり革の横棒（側窓の前）
-  const by = Y(0.078), step = Math.max(14, X(0.072) - X(0));
+  const by = S.Yb(0.078), step = Math.max(14, X(0.072) - X(0));
   R(0, by, X(0.445), 2, '#c3c9cf'); R(0, by, X(0.445), 1, '#eef1f3');
   R(X(0.895), by, iw - X(0.895), 2, '#c3c9cf'); R(X(0.895), by, iw - X(0.895), 1, '#eef1f3');
   for (let x = X(0.43) - step * Math.floor(X(0.43) / step); x < X(0.43); x += step) if (x > 2) STRAPS.push({ x, y: by + 2 });
@@ -1115,7 +1121,7 @@ function drawStraps(dt) {
     swayV += ((target - sway) * 18 - swayV * 2.2) * dt;
     sway += swayV * dt;
   }
-  const ch = SCN.core.ch, winH = (SCN.SW.y1 - SCN.SW.y0) || ch * 0.44;
+  const winH = SCN.winH0 || (SCN.SW.y1 - SCN.SW.y0); // 縦持ちで側窓が伸びても、つり革は元の大きさ
   const len = Math.max(8, Math.round(winH * 0.3));      // ベルト
   const rr = Math.max(4, Math.round(winH * 0.075));     // 輪の半径（直径 ≒ 15cm）
   for (const st of STRAPS) {
@@ -1994,13 +2000,13 @@ function frontNinja(fr, blink) {
   return c;
 }
 // 窓に貼りついた忍者の真ん中の x（景色のドット）。乗客がふり向く向きにも使う
-function leapSpotX() { const SW = SCN.SW, Hb = Math.round((SW.y1 - SW.y0) * 0.8); return Math.round(Math.min(SW.x1 - Hb * 0.5, SW.x1 * 0.56)); }
+function leapSpotX() { const SW = SCN.SW, Hb = Math.round((SCN.winH0 || (SW.y1 - SW.y0)) * 0.8); return Math.round(Math.min(SW.x1 - Hb * 0.5, SW.x1 * 0.56)); }
 function drawLeap(OX, OY, k) {
   const kk = G.skip, u = kk.u || 0, SW = SCN.SW;
   const ease = (t) => t * t * (3 - 2 * t);
   const small = 11 * ninjaMul();                            // ふだんの忍者の背の高さ（景色のドット）
-  const Hb = Math.round((SW.y1 - SW.y0) * 0.8);              // 窓に貼りついたときの背の高さ
-  const cx = leapSpotX(), cy = Math.round(SW.y0 + 4 + Hb * 0.5); // 貼りつく場所（側窓の中）
+  const Hb = Math.round((SCN.winH0 || (SW.y1 - SW.y0)) * 0.8);              // 窓に貼りついたときの背の高さ
+  const cx = leapSpotX(), cy = Math.round(SW.y1 - Hb * 0.69); // 貼りつく場所（側窓の中）
   const sx0 = SCN.baseX, sy0 = SY(kk.y0) - 6, sy1 = SY(kk.y1) - 6;
   const fr = Math.floor(G.t * 8) % 2, blink = (G.t % 2.6) < 0.12;
   ctx.imageSmoothingEnabled = false;
@@ -2188,6 +2194,11 @@ function drawFrame() {
   G.npos = null;
   // 車内（窓のところは透明）、乗客、つり革
   ctx.drawImage(inCv, OX, OY, LW * k, LH * k);
+  if (SCN.portrait) { // 縦持ち: 車内の絵の上下の余りは黒
+    const t = SCN.y + SCN.Y(0) * k, b = SCN.y + SCN.Y(1) * k;
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, SCN.y, W, Math.max(0, t - SCN.y)); ctx.fillRect(0, b, W, Math.max(0, SCN.y + SCN.h - b));
+  }
   if (window.drawPax) window.drawPax(frame.dt || 0, OX, OY, k);
   drawStraps(frame.dt || 0);
   ctx.restore();
