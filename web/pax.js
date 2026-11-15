@@ -902,7 +902,10 @@ window.paxStation = function (idx) {
   if (idx >= last) return;
   const prog = Math.min(1, Math.max(0, (idx - PAX_FROM) / Math.max(1, last - 1 - PAX_FROM)));
   const cap = sl.seats.length + sl.stands.length;
-  const target = Math.round(cap * prog ** 1.3);
+  // 混雑度（左の欄）: すかすか＝座席がだんだん埋まり、立つ人は少し／こみこみ＝はじめから 6 割、後半は満員
+  const crowd = (window.OPTS && G && G.opts ? G.opts.crowd : 'low');
+  const target = crowd === 'high' ? Math.round(cap * Math.min(1, 0.65 + 0.6 * prog))
+    : Math.round(sl.seats.length * Math.min(1, 0.2 + 0.8 * prog) + sl.stands.length * 0.3 * prog ** 1.5);
   // 降りる人（座っていた人は立ち上がってから、画面の外へ歩いていく）
   const inCar = PAX.filter((p) => p.state === 'in');
   const nOff = Math.min(inCar.length, Math.floor(inCar.length * 0.15 + hash(idx, 5, PAX_SEED) * 1.3));
@@ -932,7 +935,15 @@ window.paxStation = function (idx) {
 };
 
 // 出発するとき: 乗った駅では車内は空
-window.paxReset = function (from) { PAX = []; PAX_FROM = from || 0; PAX_SEED = Math.floor(Math.random() * 1e6); };
+window.paxReset = function (from) {
+  PAX = []; PAX_FROM = from || 0; PAX_SEED = Math.floor(Math.random() * 1e6);
+  // こみこみ: 乗った駅から、もう 6 割ほど乗っている（座っている人・立っている人）
+  if (window.OPTS && window.OPTS.crowd === 'high' && SCN && STRAPS.length) {
+    const sl = paxSlots();
+    paxBoard(sl, Math.round((sl.seats.length + sl.stands.length) * 0.65), PAX_SEED % 9973);
+    for (const p of PAX) { p.x = p.tx; p.state = 'in'; p.t = 0; p.sat = 99; }
+  }
+};
 
 // ---- しぐさ（人間らしさ）: 2 人連れはときどき話す、居眠りはこっくり→はっと目覚める、スマホから顔を上げる ----
 const TALK = ['…', '♪', 'w', '！', '？', 'へぇ', 'ね〜', 'ふふ'];

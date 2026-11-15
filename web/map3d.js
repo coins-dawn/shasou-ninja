@@ -253,9 +253,8 @@ async function start() {
         // 横幅で約 185m 見える大きさ（縦長の欄でも先が見えるように）。電車は左から 1/4 ほど、この先が右へ
         const zoom = Math.max(15.4, Math.min(17.8, 17.0 + Math.log2(Math.max(200, cw) / 360)));
         const span = cw * 40075016.686 * Math.cos(35.77 * Math.PI / 180) / (512 * Math.pow(2, zoom));
-        // 上の欄（きょり・時速など）の下から見えるように。電車は下のほう、忍者の走る側（左）が上に広がる
-        const hud = document.getElementById('hud'), top = hud ? Math.min(ch * 0.4, hud.offsetHeight) : 0;
-        map.jumpTo({ center: offset(st.S + span * 0.27, span * (tall ? 0.42 : 0.22)), bearing, pitch: tall ? 56 : 52, zoom, padding: { top, bottom: 0, left: 0, right: 0 } });
+        // 電車は下のほう、忍者の走る側（左）が上に広がる。きょりなどの欄は地図の外にあるので、地図はまるごと見える
+        map.jumpTo({ center: offset(st.S + span * 0.27, span * (tall ? 0.42 : 0.22)), bearing, pitch: tall ? 56 : 52, zoom });
       }
       requestAnimationFrame(tick);
     }

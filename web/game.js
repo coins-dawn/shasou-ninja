@@ -105,6 +105,13 @@ let W = 0, H = 0, DPR = 1, WIN = null, PX = 2, LW = 0, LH = 0, KL = 3.5, LAYOUT 
 const VIEW = 'section';
 const OFF = (d) => (VIEW === 'section' ? 0 : SC.HH * (1 - Math.exp(-d / SC.LAM))); // 奥行き → 見かけの持ち上がり
 
+// ---- 左の欄の設定（「しゅっぱつ」で G.opts に写す） ----
+const OPTS = { size: 'S', diff: 'easy', crowd: 'low' };
+window.OPTS = OPTS;
+const SIZE_MUL = { S: 1, M: 1.5, L: 2 };            // ニンジャの大きさ（見た目だけ）
+const optMult = (o) => (o.diff === 'hard' ? 2 : 1) * (o.crowd === 'high' ? 2 : 1); // ポイントの倍率
+const ninjaMul = () => SIZE_MUL[(G && G.opts ? G.opts : OPTS).size] || 1;
+
 // ---- ランキング（いまは端末内。あとで GAS の API に差し替える） ----
 const Rank = {
   KEY: 'shasou-ninja-rank-v1',
@@ -114,7 +121,7 @@ const Rank = {
   async add(rec) {
     const a = await this.list();
     a.push(rec);
-    a.sort((x, y) => y.dist - x.dist);
+    a.sort((x, y) => (y.pts ?? y.dist) - (x.pts ?? x.dist)); // ポイント（きょり × 倍率）の順
     const top = a.slice(0, 20);
     try { localStorage.setItem(this.KEY, JSON.stringify(top)); } catch (e) {}
     return top;
@@ -505,6 +512,7 @@ function newGame(from = 0) {
     bid: -1, wallBid: -1, ward: '', banner: null, parts: [], dustT: 0, camUp: 0, layer: 1,
   };
   G.stopAt = st.s; // 乗った駅にはもう止まらない
+  G.opts = { ...OPTS };
   if (window.paxReset) window.paxReset(from);
   // 最初からビルの屋根の上に立たせる: 忍者の位置（少し後ろまで）に屋根があればそこへ、なければ前で最初の屋根まで電車を進めておく
   // 高い屋根でもよい（窓の上に出るときはカメラを上げる）。忍者の横の位置はつり革の輪の間なので、輪とは重ならない
@@ -646,7 +654,7 @@ function step(dt) {
   // 高いところから落ちるときは風呂敷を広げて、ふわっと落ちる（重力を半分弱・落ちる速さは 11m/s まで）
   const below = G.y - roofUnder(nx);
   if (G.onGround || G.wall || G.vy > 0 || below < 1.5) G.momo = false;
-  else if (!G.momo && G.vy < -5 && below > 5) G.momo = true;
+  else if (!G.momo && G.vy < -5 && below > 5 && G.opts.diff !== 'hard') G.momo = true; // むずかしいは風呂敷なし
   if (G.glide) { g = 0; G.vy = -9; }
   else if (pressed && G.vy > 0 && G.holdT < P.HOLD_T) { g *= P.HOLD_G; G.holdT += dt; }
   else if (G.momo) g *= P.MOMO_G;
@@ -781,9 +789,12 @@ async function die(kind, goalText) {
       : `${whereNow()}で置いていかれた`;
   }
   const from = SC.sts[G.from].name;
-  G.dead = { why, where: `${from}から・${kind === 'goal' ? 'ゴール' : whereNow()}`, dist: G.dist };
+  const mult = optMult(G.opts);
+  G.dead = { why, where: `${from}から・${kind === 'goal' ? 'ゴール' : whereNow()}`, dist: G.dist, mult, pts: Math.round(G.dist) * mult };
   $('overWhy').textContent = why;
-  $('overScore').textContent = fmtDist(G.dist);
+  $('overScore').textContent = `${G.dead.pts.toLocaleString()} 点`;
+  const tags = [G.opts.diff === 'hard' ? 'むずかしい ×2' : '', G.opts.crowd === 'high' ? 'こみこみ ×2' : ''].filter(Boolean).join('・');
+  $('overMult').textContent = `${fmtDist(G.dist)}${mult > 1 ? `（${tags}）` : ''}`;
   $('overWhere').textContent = detail;
   $('nameRow').style.display = G.autoUsed ? 'none' : 'flex';
   $('overNote').style.display = G.autoUsed ? 'block' : 'none';
@@ -800,9 +811,9 @@ function renderRank(el, list, me) {
   list.slice(0, 10).forEach((r) => {
     const li = document.createElement('li');
     if (me && r.id === me) li.className = 'me';
-    li.textContent = `${fmtDist(r.dist)}　${r.name}　`;
+    li.textContent = `${(r.pts ?? r.dist).toLocaleString()} 点　${r.name}　`;
     const sm = document.createElement('small');
-    sm.textContent = r.where;
+    sm.textContent = `${fmtDist(r.dist)}${r.mult > 1 ? ` ×${r.mult}` : ''}・${r.where}`;
     li.appendChild(sm);
     el.appendChild(li);
   });
@@ -810,6 +821,7 @@ function renderRank(el, list, me) {
 
 // ---- 画面の割り付け ----
 function resize() {
+  document.body.classList.toggle('narrow', window.innerWidth < 760 || window.innerHeight > window.innerWidth * 1.05);
   DPR = Math.min(2, window.devicePixelRatio || 1);
   W = cv.clientWidth; H = cv.clientHeight;
   cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
@@ -858,9 +870,19 @@ function resize() {
     const m = Math.max(8, Math.min(20, Math.round(H * 0.028)));
     const col = portrait ? { x: 0, y: sh, w: W, h: H - sh } : { x: mx, y: m, w: W - mx - m, h: H - 2 * m };
     // 上は車内の案内画面、下は地図
-    const lh = portrait ? Math.round(Math.min(col.h * 0.45, col.w * 0.66)) : Math.round(Math.max(160, Math.min(col.h * 0.42, col.w * 0.82)));
-    const gap = portrait ? 0 : m;
-    const r = { x: col.x, y: col.y + lh + gap, w: col.w, h: col.h - lh - gap };
+    const lh = portrait ? Math.round(Math.min(col.h * 0.4, col.w * 0.62)) : Math.round(Math.max(150, Math.min(col.h * 0.4, col.w * 0.82)));
+    const gap = portrait ? 0 : Math.max(6, Math.round(m * 0.6));
+    // きょり・時速などの欄は、案内画面と地図のあいだ（地図に重ねない）
+    const hud = document.getElementById('hud');
+    let hh = 0;
+    if (hud) {
+      Object.assign(hud.style, { left: `${col.x}px`, top: `${col.y + lh + gap}px`, width: `${col.w}px` });
+      hud.classList.toggle('portrait', portrait);
+      hud.classList.toggle('two', col.w < 380); // 欄がせまいときは、ボタンを 2 行めに
+      hh = hud.offsetHeight;
+    }
+    const top = col.y + lh + gap + hh + gap;
+    const r = { x: col.x, y: top, w: col.w, h: Math.max(80, col.y + col.h - top) };
     Object.assign(mp.style, { left: `${r.x}px`, top: `${r.y}px`, width: `${r.w}px`, height: `${r.h}px` });
     mp.classList.toggle('portrait', portrait);
     const lc2 = document.getElementById('lcd');
@@ -1757,7 +1779,7 @@ function ninjaPose() {
   if (G.flip > 0) return { kind: 'tuck', rot: Math.min(3, Math.floor((1 - G.flip / 0.36) * 4)) };
   if (G.wall && G.vy > 0) return { kind: 'climb', ph: G.t * 9, rot: 0 };   // 鉤縄で登る
   if (G.wall) return { kind: 'run', ph: G.t * 9, rot: 3 };
-  if (G.glide) return { kind: 'momonga', rot: 0 };
+  if (G.glide) return { kind: G.opts && G.opts.diff === 'hard' ? 'fall' : 'momonga', rot: 0 };
   if (G.momo) return { kind: 'momonga', rot: 0 }; // 高いところから落ちる: 風呂敷を広げて、ふわっと
   if (!G.onGround) return { kind: G.vy > 2 ? 'jump' : 'fall', rot: 0 };
   if (G.landT > 0) return { kind: 'land', rot: 0 };
@@ -1893,7 +1915,7 @@ function drawRope(OX, OY, k) {
   if (climbing) { hk.t += dt; hk.top = Math.max(hk.top, roofUnder(hk.face + 0.8)); }
   else { hk.rel += dt; if (hk.rel > 0.22) { G.hook = null; return; } }
   const hx = OX + SX(hk.face) * k, hy = OY + SY(hk.top) * k;                 // 鉤（屋根のふち）
-  const nxp = OX + (G.npos.x + P.FOOT * KL - 0.6) * k, nyp = OY + (G.npos.y - 2.3 * KL) * k; // 手
+  const nm = ninjaMul(), nxp = OX + (G.npos.x + (P.FOOT * KL - 0.6) * nm) * k, nyp = OY + (G.npos.y - 2.3 * KL * nm) * k; // 手
   let e = Math.min(1, hk.t / 0.09);                                              // 投げた鉤が上がっていく
   if (hk.rel > 0) e = 1 - hk.rel / 0.22;                                         // 登りきったら縄をたぐり寄せる
   const ex = nxp + (hx - nxp) * e, ey = nyp + (hy - nyp) * e;
@@ -1960,7 +1982,7 @@ function leapSpotX() { const SW = SCN.SW, Hb = Math.round((SW.y1 - SW.y0) * 0.8)
 function drawLeap(OX, OY, k) {
   const kk = G.skip, u = kk.u || 0, SW = SCN.SW;
   const ease = (t) => t * t * (3 - 2 * t);
-  const small = 11;                                         // ふだんの忍者の背の高さ（景色のドット）
+  const small = 11 * ninjaMul();                            // ふだんの忍者の背の高さ（景色のドット）
   const Hb = Math.round((SW.y1 - SW.y0) * 0.8);              // 窓に貼りついたときの背の高さ
   const cx = leapSpotX(), cy = Math.round(SW.y0 + 4 + Hb * 0.5); // 貼りつく場所（側窓の中）
   const sx0 = SCN.baseX, sy0 = SY(kk.y0) - 6, sy1 = SY(kk.y1) - 6;
@@ -1990,8 +2012,8 @@ function drawLeap(OX, OY, k) {
   }
 }
 
-function drawNinja(x, y, tgt = lc, dotsPerPx = 1) {
-  const pose = ninjaPose();
+function drawNinja(x, y, tgt = lc, dotsPerPx = 1, poseOverride = null) {
+  const pose = poseOverride || ninjaPose();
   const { outl, GW, GH, PADX, PADY } = ninjaGrid(pose);
   const rot = pose.rot;
   let ox, oy;
@@ -2026,6 +2048,8 @@ function updateHud() {
   hudSet('hDist', fmtDist(G.dist));
   hudSet('hKmh', G.skip ? '―' : `${Math.round(G.speed * 3.6)}`);
   hudSet('hSt', `${G.stationsPassed}`);
+  const pn = document.getElementById('playingNote');
+  if (pn) { const v = G.state === 'play' ? 'block' : 'none'; if (pn.style.display !== v) pn.style.display = v; }
   const hb = document.getElementById('hud');
   if (hb) { hb.classList.toggle('playing', G.state === 'play'); hb.classList.toggle('paused', !!paused); hb.classList.toggle('auto', !!G.auto); }
   hudSet('autoLabel', G.auto ? 'オート実行中' : 'オート実行');
@@ -2055,19 +2079,29 @@ function updateLcd() {
   const label = cur >= 0 ? 'ただいま' : soon ? 'まもなく' : '次は';
   const en = Math.floor(G.t / 5) % 3 === 2;                              // 3 回に 1 回は英語で
   const d = new Date(), clock = `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
-  const ncol = Math.max(3, Math.min(8, Math.floor(el.clientWidth / (parseFloat(el.style.fontSize) * 3.1))));
-  const first = cur >= 0 ? cur + 1 : ib;
-  const list = st.slice(first, first + ncol - 1);
-  const mins = lcdMinutes(first);
-  const key = [label, nxt, en, clock, ncol, first, mins.slice(0, list.length).join(',')].join('|');
+  // 路線図はいつも 7 駅。ふだんは 1 つ前の駅から。終点が近づいたら、通った駅（灰色）を左に残して 7 駅にする
+  const N = 7, n = st.length, here = cur >= 0 ? cur : ib;
+  const a = Math.max(0, Math.min(here - 1, n - N));
+  const firstAhead = cur >= 0 ? cur + 1 : ib;
+  const mins = lcdMinutes(firstAhead);
+  const key = [label, nxt, en, clock, a, cur, ib, mins.slice(0, N).join(',')].join('|');
   if (key === LCD.key) return;
   LCD.key = key;
   const S0 = st[nxt], dest = st[st.length - 1];
   const code = (c) => `<span class="code">${c.slice(0, 2)}<br>${c.slice(2)}</span>`;
-  // 縦書きの駅名は、文字数に合わせて小さくして 5.2em に収める
-  const cols = [`<div class="col"><span class="vnw"></span></div>`].concat(list.map((x) => `<div class="col"><span class="vnw"><span class="vn" style="font-size:${Math.min(1.05, 5.2 / x.name.length).toFixed(2)}em">${x.name}</span></span></div>`));
-  const dots = [`<div class="dot now"><i></i></div>`].concat(list.map((x, i) => `<div class="dot${i === 0 && cur < 0 ? ' next' : ''}"><i>${mins[i]}</i></div>`));
-  const codes = [`<div class="col"><span class="xf"></span></div>`].concat(list.map((x) => `<div class="col">${code(x.code)}<span class="xf">${(x.xfer || []).slice(0, 2).join('<br>')}</span></div>`));
+  const vname = (x) => `<span class="vnw"><span class="vn" style="font-size:${Math.min(1.05, 5.2 / x.name.length).toFixed(2)}em">${x.name}</span></span>`;
+  const cols = [], dots = [], codes = [];
+  const nowCol = () => { cols.push(`<div class="col"><span class="vnw"></span></div>`); dots.push(`<div class="dot now"><i></i></div>`); codes.push(`<div class="col"><span class="xf"></span></div>`); };
+  for (let i = a; i < a + N && i < n; i++) {
+    const x = st[i], past = i < here || (cur >= 0 && i === cur && false);
+    if (cur < 0 && i === ib) nowCol();                                   // 走っているあいだは、駅と駅のあいだに「いまここ」
+    const isCur = cur >= 0 && i === cur;
+    cols.push(`<div class="col${i < here ? ' past' : ''}">${vname(x)}</div>`);
+    if (isCur) dots.push(`<div class="dot now"><i></i></div>`);           // 停車中はその駅が「いまここ」
+    else if (i < here) dots.push(`<div class="dot past"><i></i></div>`);
+    else dots.push(`<div class="dot${i === ib && cur < 0 ? ' next' : ''}"><i>${mins[i - firstAhead]}</i></div>`);
+    codes.push(`<div class="col${i < here ? ' past' : ''}">${code(x.code)}<span class="xf">${(x.xfer || []).slice(0, 2).join('<br>')}</span></div>`);
+  }
   el.innerHTML = `
     <div class="head">
       <div class="kind"><b>各駅停車</b><span class="dest">${dest.name}<small>ゆき</small></span></div>
@@ -2127,7 +2161,7 @@ function drawFrame() {
   if (G.skip && !G.skip.water && G.state === 'play') drawLeap(OX, OY, k); // ひとっとび: こちらへ跳んで窓に貼りつき、もどる
   else if (G.npos && window.ninjaCanvas) {
     const nc = window.ninjaCanvas();
-    const sp = k / 2;
+    const sp = (k / 2) * ninjaMul(); // 左の欄の「ニンジャの大きさ」（足もとを基準に大きくする）
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(nc, OX + G.npos.x * k - 22 * sp, OY + G.npos.y * k - 31 * sp, 44 * sp, 36 * sp);
     drawRope(OX, OY, k); // 縄は忍者の手から（手前に）
@@ -2226,6 +2260,14 @@ function drawLED(OX, OY, k) {
 const ninjaCv = document.createElement('canvas');
 ninjaCv.width = 44; ninjaCv.height = 36;
 const nctx = ninjaCv.getContext('2d');
+// タイトルの「ぼくらの」の右の忍者（ゲームと同じドット絵が走る）
+function drawLogoNinja() {
+  const c = document.getElementById('logoNinja');
+  if (!c || !KL) return;
+  const g = c.getContext('2d');
+  g.clearRect(0, 0, c.width, c.height);
+  drawNinja(22, 31, g, 2, { kind: 'run', ph: performance.now() / 1000 * 7, rot: 0 });
+}
 window.ninjaCanvas = () => {
   if (!G || !KL) return null;
   nctx.clearRect(0, 0, 44, 36);
@@ -2287,6 +2329,7 @@ function frame(ts) {
     const need = Math.max(0, G.y + 5 - (SCN.gY - SCN.SW.y0) / KL + 1); // 側窓の上のふちより上に出そうなとき
     G.camUp = need > G.camUp ? G.camUp + (need - G.camUp) * Math.min(1, dt * 8) : Math.max(need, G.camUp - dt * 25);
     drawFrame();
+    drawLogoNinja();
   }
   requestAnimationFrame(frame);
 }
@@ -2301,22 +2344,32 @@ async function main() {
   MAP = mp; SC = sc;
   prepare(SC);
   buildSprings(SC);
-  $('lineName').textContent = `${SC.line} ／ 左の窓`;
-  $('credit').innerHTML =
-    `建物: 国土交通省 PLATEAU（${SC.sources.plateau.join('、')}）を加工して作成／ ` +
-    `駅・時刻表: 東京都交通局 GTFS（公共交通オープンデータセンター経由、CC BY 4.0、2026-09-16 版）／ ` +
-    `線路・川・公園・学校: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors（ODbL）／ ` +
-    `地図: 国土地理院 地理院タイル（淡色地図）／ ` +
-    `文字: DotGothic16（SIL OFL）`;
+  $('credit').innerHTML = '<ul>' + [
+    `建物: 国土交通省 PLATEAU（${SC.sources.plateau.join('、')}）を加工して作成`,
+    '駅・時刻表: 東京都交通局 GTFS（<a href="https://www.odpt.org/" target="_blank" rel="noopener">公共交通オープンデータセンター</a>経由、CC BY 4.0、2026-09-16 版）',
+    '線路・川・公園・学校・お店: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors（ODbL）',
+    '地図: 国土地理院 地理院タイル（淡色地図）',
+    '文字: DotGothic16（SIL OFL）',
+  ].map((t) => `<li>${t}</li>`).join('') + '</ul>';
   $('startSt').innerHTML = SC.sts.slice(0, -1).map((s, i) => `<option value="${i}">${s.name}</option>`).join('');
   $('startSt').onchange = () => { // 乗る駅を変えたら、窓の外・忍者・地図もその駅へ
     startFrom = +$('startSt').value || 0;
     newGame(startFrom); G.state = 'title';
   };
 
+  // 左の欄の設定
+  const sync = () => {
+    OPTS.size = $('sizeSel').value; OPTS.diff = $('diffSel').value; OPTS.crowd = $('crowdSel').value;
+    const m = optMult(OPTS);
+    $('multNote').textContent = m > 1 ? `ポイント ×${m}` : 'ポイント ×1（きょり）';
+    if (!G || G.state !== 'play') { newGame(startFrom); G.state = 'title'; } // 遊んでいないときは、その設定で見せる
+  };
+  for (const id of ['sizeSel', 'diffSel', 'crowdSel']) $(id).onchange = sync;
+
   resize();
   newGame(); G.state = 'title';
-  $('title').classList.add('show');
+  sync();
+  document.body.classList.add('menu');
   requestAnimationFrame(frame);
 }
 
@@ -2338,13 +2391,18 @@ let startFrom = 0;
 const begin = () => { paused = false; newGame(startFrom); say(`${SC.sts[startFrom].name} → ${SC.dest}`); };
 const toTitle = () => {
   paused = false;
-  for (const id of ['pause', 'over', 'rank']) $(id).classList.remove('show');
+  for (const id of ['pause', 'over', 'rank', 'about']) $(id).classList.remove('show');
   if (G) G.state = 'title';
-  $('title').classList.add('show');
+  document.body.classList.add('menu'); // せまい画面では左の欄（メニュー）を出す
 };
 $('pauseBtn').onclick = (e) => { e.stopPropagation(); setPause(!paused); };
 $('autoBtn').onclick = (e) => { e.stopPropagation(); if (!paused) setAuto(!G.auto); };
-$('start').onclick = () => { startFrom = +$('startSt').value || 0; $('title').classList.remove('show'); begin(); };
+$('start').onclick = () => {
+  startFrom = +$('startSt').value || 0;
+  for (const id of ['pause', 'over', 'rank', 'about']) $(id).classList.remove('show');
+  document.body.classList.remove('menu');
+  begin();
+};
 $('retry').onclick = () => { $('over').classList.remove('show'); begin(); };
 $('overTitle').onclick = toTitle;
 $('resume').onclick = () => setPause(false);
@@ -2353,11 +2411,13 @@ $('save').onclick = async () => {
   const name = ($('name').value || 'ななしの忍').trim().slice(0, 12);
   try { localStorage.setItem('shasou-ninja-name', name); } catch (e) {}
   const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-  const list = await Rank.add({ id, name, dist: Math.round(G.dead.dist), where: G.dead.where, at: new Date().toISOString() });
+  const list = await Rank.add({ id, name, dist: Math.round(G.dead.dist), pts: G.dead.pts, mult: G.dead.mult, where: G.dead.where, at: new Date().toISOString() });
   $('nameRow').style.display = 'none';
   renderRank($('rankOver'), list, id);
 };
-$('showRank').onclick = async () => { renderRank($('rankList'), await Rank.list(), null); $('title').classList.remove('show'); $('rank').classList.add('show'); };
-$('closeRank').onclick = () => { $('rank').classList.remove('show'); $('title').classList.add('show'); };
+$('showRank').onclick = async () => { if (G && G.state === 'play') setPause(true); $('pause').classList.remove('show'); renderRank($('rankList'), await Rank.list(), null); $('rank').classList.add('show'); };
+$('closeRank').onclick = () => { $('rank').classList.remove('show'); if (paused) $('pause').classList.add('show'); };
+$('aboutBtn').onclick = () => { if (G && G.state === 'play') setPause(true); $('pause').classList.remove('show'); $('about').classList.add('show'); };
+$('closeAbout').onclick = () => { $('about').classList.remove('show'); if (paused) $('pause').classList.add('show'); };
 
 main();
