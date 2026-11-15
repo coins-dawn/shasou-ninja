@@ -108,6 +108,8 @@ const OFF = (d) => (VIEW === 'section' ? 0 : SC.HH * (1 - Math.exp(-d / SC.LAM))
 // ---- 左の欄の設定（「しゅっぱつ」で G.opts に写す） ----
 const OPTS = { size: 'S', diff: 'easy', crowd: 'low' };
 window.OPTS = OPTS;
+// 景色・車内のドットの細かさ。2 = 忍者と同じ細かさ（忍者の 1 ドット = 景色の 1 ドット）、1 = 元の粗さ（忍者だけ 2 倍細かい）
+const DOT = (() => { const m = /dot=(\d)/.exec(location.search); return m ? Math.max(1, +m[1]) : 2; })();
 const SIZE_MUL = { S: 1, M: 1.5, L: 2 };            // ニンジャの大きさ（見た目だけ）
 const optMult = (o) => (o.diff === 'hard' ? 2 : 1) * (o.crowd === 'high' ? 2 : 1); // ポイントの倍率
 const ninjaMul = () => SIZE_MUL[(G && G.opts ? G.opts : OPTS).size] || 1;
@@ -839,7 +841,7 @@ function resize() {
   // 縦持ちの車内は、場面の高さに天井から床までが収まる大きさ（幅は芯の 0.68〜0.92 の範囲で見せる）
   const coreW = portrait ? Math.min(sw / 0.68, Math.max(sw / 0.92, sh * 1.65)) : Math.min(sh / 0.66, trainW / 0.9);
   SCN = { x: 0, y: 0, w: sw, h: sh, portrait, side };
-  PX = Math.max(2, Math.round((coreW * DPR) / (portrait ? 300 : 480)));
+  PX = Math.max(2, Math.round((coreW * DPR) / (portrait ? 300 : 480))) / DOT;
   LW = Math.ceil((sw * DPR) / PX); LH = Math.ceil((sh * DPR) / PX);
   low.width = LW; low.height = LH;
   const cw = (coreW * DPR) / PX, ch0 = cw * 0.66;
@@ -1935,7 +1937,7 @@ function drawRope(OX, OY, k) {
   if (climbing) { hk.t += dt; hk.top = Math.max(hk.top, roofUnder(hk.face + 0.8)); }
   else { hk.rel += dt; if (hk.rel > 0.22) { G.hook = null; return; } }
   const hx = OX + SX(hk.face) * k, hy = OY + SY(hk.top) * k;                 // 鉤（屋根のふち）
-  const nm = ninjaMul(), nxp = OX + (G.npos.x + (P.FOOT * KL - 0.6) * nm) * k, nyp = OY + (G.npos.y - 2.3 * KL * nm) * k; // 手
+  const nm = ninjaMul(), nxp = OX + (G.npos.x + (P.FOOT * KL - 0.3 * DOT) * nm) * k, nyp = OY + (G.npos.y - 2.3 * KL * nm) * k; // 手
   let e = Math.min(1, hk.t / 0.09);                                              // 投げた鉤が上がっていく
   if (hk.rel > 0) e = 1 - hk.rel / 0.22;                                         // 登りきったら縄をたぐり寄せる
   const ex = nxp + (hx - nxp) * e, ey = nyp + (hy - nyp) * e;
@@ -2002,10 +2004,10 @@ function leapSpotX() { const SW = SCN.SW, Hb = Math.round((SCN.winH0 || (SW.y1 -
 function drawLeap(OX, OY, k) {
   const kk = G.skip, u = kk.u || 0, SW = SCN.SW;
   const ease = (t) => t * t * (3 - 2 * t);
-  const small = 11 * ninjaMul();                            // ふだんの忍者の背の高さ（景色のドット）
+  const small = 11 * DOT * ninjaMul();                            // ふだんの忍者の背の高さ（景色のドット）
   const Hb = Math.round((SCN.winH0 || (SW.y1 - SW.y0)) * 0.8);              // 窓に貼りついたときの背の高さ
   const cx = leapSpotX(), cy = Math.round(SW.y1 - Hb * 0.69); // 貼りつく場所（側窓の中）
-  const sx0 = SCN.baseX, sy0 = SY(kk.y0) - 6, sy1 = SY(kk.y1) - 6;
+  const sx0 = SCN.baseX, sy0 = SY(kk.y0) - 3 * DOT, sy1 = SY(kk.y1) - 3 * DOT;
   const fr = Math.floor(G.t * 8) % 2, blink = (G.t % 2.6) < 0.12;
   ctx.imageSmoothingEnabled = false;
   const blit = (img, x, y, h, sqx = 1, sqy = 1) => { // (x, y) は真ん中（景色のドット）、h は背の高さ
@@ -2184,7 +2186,7 @@ function drawFrame() {
   if (G.skip && !G.skip.water && G.state === 'play') drawLeap(OX, OY, k); // ひとっとび: こちらへ跳んで窓に貼りつき、もどる
   else if (G.npos && window.ninjaCanvas) {
     const nc = window.ninjaCanvas();
-    const sp = (k / 2) * ninjaMul(); // 左の欄の「ニンジャの大きさ」（足もとを基準に大きくする）
+    const sp = ((k * DOT) / 2) * ninjaMul(); // 左の欄の「ニンジャの大きさ」（足もとを基準に大きくする）
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(nc, OX + G.npos.x * k - 22 * sp, OY + G.npos.y * k - 31 * sp, 44 * sp, 36 * sp);
     drawRope(OX, OY, k); // 縄は忍者の手から（手前に）
@@ -2294,7 +2296,7 @@ function drawLogoNinja() {
 window.ninjaCanvas = () => {
   if (!G || !KL) return null;
   nctx.clearRect(0, 0, 44, 36);
-  drawNinja(22, 31, nctx, 2);
+  drawNinja(22, 31, nctx, 2 / DOT);
   return ninjaCv;
 };
 
