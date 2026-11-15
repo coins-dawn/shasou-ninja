@@ -531,6 +531,8 @@ function newGame(from = 0) {
     G.bid = bldgAt(at);
   }
   if (SCN && KL) G.camUp = Math.max(0, G.y + 5 - (SCN.gY - SCN.SW.y0) / KL + 1); // 高い屋根なら、はじめからカメラを上げておく
+  // カメラはふだん一番下に固定。出発の屋根にいるあいだだけ、忍者が見えるよう上げておく（ほかの屋根に降りたら下ろす）
+  G.camHold = G.camUp > 0; G.startBid = G.bid; G.startY = G.y;
 }
 
 // ---- 一時停止 ----
@@ -1352,9 +1354,8 @@ function drawLow() {
 
   // 忍者
   const nX = baseX + Math.round(G.off * KL), nY = SY(G.y);
-  if (nY < SCN.SW.y0 + 4) { // 側窓の上に出たとき
-    lc.fillStyle = '#d63c3c';
-    for (let i = 0; i < 4; i++) lc.fillRect(nX - i, SCN.SW.y0 + 2 + i, i * 2 + 1, 1);
+  if (nY < SCN.SW.y0 + 2) { // 側窓の上に出たとき: 横の位置に吹き出し（drawFrame）
+    G.nup = { x: nX, up: (SCN.SW.y0 - nY) / KL };
   } else G.npos = { x: nX, y: nY }; // 忍者は景色より細かいドットで、あとから重ねる（drawFrame）
 
   // ひとっとびの風
@@ -2001,6 +2002,25 @@ function frontNinja(fr, blink) {
 }
 // 窓に貼りついた忍者の真ん中の x（景色のドット）。乗客がふり向く向きにも使う
 function leapSpotX() { const SW = SCN.SW, Hb = Math.round((SCN.winH0 || (SW.y1 - SW.y0)) * 0.8); return Math.round(Math.min(SW.x1 - Hb * 0.5, SW.x1 * 0.56)); }
+// 忍者が窓の上の外にいるとき: 窓の上のふち、忍者の真下に「上にいるよ」の吹き出し（忍者の絵と高さ）
+function drawNinjaUp(OX, OY, k) {
+  const SW = SCN.SW, nc = window.ninjaCanvas();
+  if (!nc) return;
+  const bw = 54, bh = 58, tip = 8;
+  const xL = OX + Math.max(0, SW.x0) * k + bw / 2 + 4, xR = OX + SW.x1 * k - bw / 2 - 4;
+  const cx = Math.round(Math.max(xL, Math.min(xR, OX + G.nup.x * k))), top = Math.round(OY + SW.y0 * k + 4);
+  const ax = Math.round(Math.max(cx - bw / 2 + 6, Math.min(cx + bw / 2 - 6, OX + G.nup.x * k))); // とがりは忍者の真下
+  const y0 = top + tip, x0 = cx - bw / 2;
+  ctx.fillStyle = INK;
+  ctx.fillRect(x0 - 2, y0 - 2, bw + 4, bh + 4);
+  ctx.beginPath(); ctx.moveTo(ax - tip - 2, y0); ctx.lineTo(ax, top - 3); ctx.lineTo(ax + tip + 2, y0); ctx.fill();
+  ctx.fillStyle = '#fbf6e6';
+  ctx.fillRect(x0, y0, bw, bh);
+  ctx.beginPath(); ctx.moveTo(ax - tip + 1, y0 + 1); ctx.lineTo(ax, top); ctx.lineTo(ax + tip - 1, y0 + 1); ctx.fill();
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(nc, cx - 40, y0 - 14, 80, 65); // 44×36 の絵を約 1.8 倍（忍者は絵の真ん中、上の余白は透明）
+  text(`↑${Math.max(1, Math.round(G.nup.up))}m`, cx, y0 + bh - 8, 12, INK, 'center', false);
+}
 function drawLeap(OX, OY, k) {
   const kk = G.skip, u = kk.u || 0, SW = SCN.SW;
   const ease = (t) => t * t * (3 - 2 * t);
@@ -2196,6 +2216,8 @@ function drawFrame() {
   ctx.drawImage(inCv, OX, OY, LW * k, LH * k);
   if (window.drawPax) window.drawPax(frame.dt || 0, OX, OY, k);
   drawStraps(frame.dt || 0);
+  if (G.nup && !G.skip && window.ninjaCanvas) drawNinjaUp(OX, OY, k);
+  G.nup = null;
   ctx.restore();
 
   // 案内表示（ドアの上の電光掲示板）
@@ -2350,8 +2372,9 @@ function frame(ts) {
     for (let i = 0; i < n; i++) step(sdt / n);
   } else if (G) G.t += dt;
   if (G) {
-    // 窓の上に出そうなときだけカメラを上げる。下がるときはすぐ戻す
-    const need = Math.max(0, G.y + 5 - (SCN.gY - SCN.SW.y0) / KL + 1); // 側窓の上のふちより上に出そうなとき
+    // カメラは一番下に固定（忍者が窓の上に出たら吹き出しで知らせる）。出発の屋根にいるあいだだけ忍者についていく
+    if (G.camHold && ((G.onGround && G.bid !== G.startBid) || G.y < G.startY - 1)) G.camHold = false;
+    const need = G.camHold ? Math.max(0, G.y + 5 - (SCN.gY - SCN.SW.y0) / KL + 1) : 0;
     G.camUp = need > G.camUp ? G.camUp + (need - G.camUp) * Math.min(1, dt * 8) : Math.max(need, G.camUp - dt * 25);
     drawFrame();
     drawLogoNinja();
