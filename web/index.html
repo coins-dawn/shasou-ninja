@@ -43,7 +43,13 @@
   #c { position:absolute; inset:0; width:100%; height:100%; display:block; }
   #map { position:absolute; background:#dfe6ea; border:4px solid #2a2a30; border-radius:6px; overflow:hidden; box-sizing:border-box;
     pointer-events:none; box-shadow:4px 5px 0 rgba(20,18,30,.35); }
-  #map.portrait, #lcd.portrait { border:0; border-top:4px solid #2a2a30; border-radius:0; box-shadow:none; }
+  #map.portrait { display:none; }  /* スマホの縦画面では地図を出さない */
+  #lcd.portrait { border:0; border-bottom:4px solid #2a2a30; border-radius:0; box-shadow:none; }
+  /* 縦画面: 案内画面の余った高さは駅名の欄に回す */
+  #lcd.portrait .body { justify-content:flex-start; }
+  #lcd.portrait .kind .dest { font-size:.68em; }
+  #lcd.portrait .body > .cols:first-child { flex:1 1 auto; align-items:stretch; min-height:5.4em; }
+  #lcd.portrait .body > .cols:first-child .col .vnw { flex:1 1 auto; height:auto; min-height:5.4em; }
   #map .maplibregl-ctrl-attrib, #map .maplibregl-ctrl-attrib a, #map .maplibregl-ctrl-attrib-button { pointer-events:auto; }
   /* きょり・時速・駅とボタン: 案内画面と地図のあいだの 1 行（地図には重ねない） */
   #hud { position:absolute; z-index:10; display:flex; flex-wrap:nowrap; align-items:center; gap:4px 8px; padding:4px 8px;
@@ -224,8 +230,8 @@
 </div>
 
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-<script src="game.js?v=20261116o"></script>
-<script src="map3d.js?v=20261116o"></script>
-<script src="pax.js?v=20261116o"></script>
+<script src="game.js?v=20261116q"></script>
+<script src="map3d.js?v=20261116q"></script>
+<script src="pax.js?v=20261116q"></script>
 </body>
 </html>

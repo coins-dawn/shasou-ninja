@@ -830,9 +830,15 @@ function resize() {
   // 横持ち: 電車の場面はドアの右のふちまで。その右（画面の約 3 割）は全部 3D の地図
   const side = 0;
   const trainW = portrait ? W : Math.round(W * 0.7);
-  const sw = W, sh = portrait ? Math.min(Math.round(W * 0.66), Math.round(H * 0.62)) : H;
+  // 縦持ち（スマホ）: 上から 案内画面 → 車内の場面 → きょり・ボタンの欄。3D の地図は出さない
+  const hudEl = document.getElementById('hud');
+  if (hudEl) { hudEl.classList.toggle('portrait', portrait); hudEl.classList.toggle('two', portrait && W < 380); if (portrait) hudEl.style.width = `${W}px`; }
+  const hudH = portrait && hudEl ? (hudEl.offsetHeight || 44) : 0;
+  // 場面の高さは幅の 0.7 倍まで。残りはすべて案内画面に（駅名の欄が伸びる）
+  const sw = W, sh = portrait ? Math.max(120, Math.min(Math.round(W * 0.7), H - hudH - 220)) : H;
+  const lcdH = portrait ? H - hudH - sh : 0;
   const coreW = portrait ? Math.min(sw, sh / 0.66) : Math.min(sh / 0.66, trainW / 0.9);
-  SCN = { x: 0, y: 0, w: sw, h: sh, portrait, side };
+  SCN = { x: 0, y: portrait ? lcdH : 0, w: sw, h: sh, portrait, side };
   PX = Math.max(2, Math.round((coreW * DPR) / (portrait ? 300 : 480)));
   LW = Math.ceil((sw * DPR) / PX); LH = Math.ceil((sh * DPR) / PX);
   low.width = LW; low.height = LH;
@@ -864,7 +870,17 @@ function resize() {
   LAYOUT = { k, ledX: SCN.x + DR.x0 * k + 6, ledY: Y(0.035) * k, ledW: (DR.x1 - DR.x0) * k - 12, portrait };
   // 3D の地図: 横持ちはドアの右ぜんぶ、縦持ちは場面の下
   const mp = document.getElementById('map');
-  if (mp) {
+  if (mp) mp.classList.toggle('portrait', portrait);
+  if (mp && portrait) {
+    const hud = document.getElementById('hud');
+    if (hud) Object.assign(hud.style, { left: '0px', top: `${lcdH + sh}px`, width: `${W}px` });
+    const lc2 = document.getElementById('lcd');
+    if (lc2) {
+      Object.assign(lc2.style, { left: '0px', top: '0px', width: `${W}px`, height: `${lcdH}px`, fontSize: `${Math.max(9, Math.min(lcdH / 17, W / 21))}px` });
+      lc2.classList.add('portrait', 'show');
+      LCD.key = '';
+    }
+  } else if (mp) {
     const mx = Math.round(SCN.visR * k);
     // 横持ちは上・下・右を少しあけて、地図の後ろに車内（ドアの向こうの壁・窓）を見せる
     const m = Math.max(8, Math.min(20, Math.round(H * 0.028)));
@@ -2116,6 +2132,9 @@ function updateLcd() {
       <div class="cols">${codes.join('')}</div>
     </div>
     <div class="foot">（分）は時刻表での所要時間のめやすです</div>`;
+  // 長い駅名（赤土小学校前など）は欄の幅に収まるまで縮める
+  const nm = el.querySelector('.r2 .name');
+  if (nm && nm.scrollWidth > nm.clientWidth + 1) nm.style.fontSize = `${(parseFloat(getComputedStyle(nm).fontSize) * nm.clientWidth / nm.scrollWidth) * 0.97}px`;
 }
 function drawFrame() {
   const L = LAYOUT, k = PX / DPR;
