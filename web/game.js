@@ -830,27 +830,23 @@ function resize() {
   // 横持ち: 電車の場面はドアの右のふちまで。その右（画面の約 3 割）は全部 3D の地図
   const side = 0;
   const trainW = portrait ? W : Math.round(W * 0.7);
-  // 縦持ち（スマホ）: 上から 案内画面 → 車内の場面 → きょり・ボタンの欄。3D の地図は出さない
+  // 縦持ち（スマホ）: 上から 車内の場面 → きょり・ボタンの欄 → 3D の地図（題名の帯は HTML の側）。案内画面は出さない
   const hudEl = document.getElementById('hud');
-  if (hudEl) { hudEl.classList.toggle('portrait', portrait); hudEl.classList.toggle('two', portrait && W < 380); if (portrait) hudEl.style.width = `${W}px`; }
+  if (hudEl) { hudEl.classList.toggle('portrait', portrait); hudEl.classList.toggle('two', portrait && W < 340); if (portrait) hudEl.style.width = `${W}px`; }
   const hudH = portrait && hudEl ? (hudEl.offsetHeight || 44) : 0;
-  // 場面は画面の縦 2/3（案内画面に最低 200px は残す）。残りは案内画面に（駅名の欄が伸びる）
-  const sw = W, sh = portrait ? Math.max(120, Math.min(Math.round(H * 2 / 3), H - hudH - 200)) : H;
-  const lcdH = portrait ? H - hudH - sh : 0;
-  // 縦持ちも右はドアの枠まで（ドアの上の案内表示が右はしで読める）
-  const coreW = portrait ? sw / 0.9 : Math.min(sh / 0.66, trainW / 0.9);
-  SCN = { x: 0, y: portrait ? lcdH : 0, w: sw, h: sh, portrait, side };
+  const sw = W, sh = portrait ? Math.max(120, Math.min(Math.round(W * 0.89), Math.round(H * 0.55))) : H;
+  // 縦持ちは車内を大きく: 右はドアの左の窓のあたり（芯の 0.64）で切る
+  const coreW = portrait ? sw / 0.68 : Math.min(sh / 0.66, trainW / 0.9);
+  SCN = { x: 0, y: 0, w: sw, h: sh, portrait, side };
   PX = Math.max(2, Math.round((coreW * DPR) / (portrait ? 300 : 480)));
   LW = Math.ceil((sw * DPR) / PX); LH = Math.ceil((sh * DPR) / PX);
   low.width = LW; low.height = LH;
-  // 縦持ちは車内を縦に伸ばして場面の高さいっぱいに（側窓が高くなり、上の屋根まで見える）
   const cw = (coreW * DPR) / PX, ch0 = cw * 0.66;
-  const ox = Math.round((trainW * DPR) / PX - 0.88 * cw - 4); // ドアの枠の右はしが場面（横持ちは地図）の左はし
+  const ox = portrait ? Math.round(LW - 0.64 * cw) : Math.round((trainW * DPR) / PX - 0.88 * cw - 4); // 横持ちはドアの枠の右はしが地図の左はし
   // 床が見える高さを半分にするため、絵を床の高さの半分だけ下げる（上は天井が広がる）
-  // 縦持ちは車内を引き伸ばさず、場面の上下の真ん中に置く（上下の余りは黒）
   const ch = ch0;
   const oy0 = (LH - ch) * 0.45, floor0 = LH - oy0 - 0.885 * ch;
-  const oy = portrait ? Math.round((LH - ch) / 2) : oy0 + floor0 / 2;
+  const oy = oy0 + floor0 / 2;
   const X = (f) => Math.round(ox + f * cw);
   const Y = (f) => Math.round(f <= 0.57 ? oy + f * ch : oy + 0.57 * ch + (f - 0.57) * ch0);
   const Yb = (f) => Math.round(oy + 0.57 * ch - (0.57 - f) * ch0); // 側窓の下のふちから、元の縮尺で測った高さ
@@ -879,20 +875,21 @@ function resize() {
   if (mp) mp.classList.toggle('portrait', portrait);
   if (mp && portrait) {
     const hud = document.getElementById('hud');
-    if (hud) Object.assign(hud.style, { left: '0px', top: `${lcdH + sh}px`, width: `${W}px` });
+    if (hud) Object.assign(hud.style, { left: '0px', top: `${sh}px`, width: `${W}px` });
+    const top = sh + hudH;
+    Object.assign(mp.style, { left: '0px', top: `${top}px`, width: `${W}px`, height: `${Math.max(80, H - top)}px` });
     const lc2 = document.getElementById('lcd');
-    if (lc2) {
-      Object.assign(lc2.style, { left: '0px', top: '0px', width: `${W}px`, height: `${lcdH}px`, fontSize: `${Math.max(9, Math.min(lcdH / 17, W / 21))}px` });
-      lc2.classList.add('portrait', 'show');
-      LCD.key = '';
-    }
+    if (lc2) lc2.classList.remove('show');
+    window.dispatchEvent(new Event('insetresize'));
   } else if (mp) {
     const mx = Math.round(SCN.visR * k);
     // 横持ちは上・下・右を少しあけて、地図の後ろに車内（ドアの向こうの壁・窓）を見せる
     const m = Math.max(8, Math.min(20, Math.round(H * 0.028)));
     const col = portrait ? { x: 0, y: sh, w: W, h: H - sh } : { x: mx, y: m, w: W - mx - m, h: H - 2 * m };
     // 上は車内の案内画面、下は地図
-    const lh = portrait ? Math.round(Math.min(col.h * 0.4, col.w * 0.62)) : Math.round(Math.max(150, Math.min(col.h * 0.4, col.w * 0.82)));
+    // 低い横画面（スマホの横持ち）は案内画面を省いて、地図に場所を回す
+    const noLcd = H < 420;
+    const lh = noLcd ? -Math.max(6, Math.round(m * 0.6)) : Math.round(Math.max(150, Math.min(col.h * 0.4, col.w * 0.82)));
     const gap = portrait ? 0 : Math.max(6, Math.round(m * 0.6));
     // きょり・時速などの欄は、案内画面と地図のあいだ（地図に重ねない）
     const hud = document.getElementById('hud');
@@ -910,7 +907,7 @@ function resize() {
     const lc2 = document.getElementById('lcd');
     if (lc2) {
       Object.assign(lc2.style, { left: `${col.x}px`, top: `${col.y}px`, width: `${col.w}px`, height: `${lh}px`, fontSize: `${Math.max(9, Math.min(lh / 18, col.w / 24))}px` });
-      lc2.classList.toggle('portrait', portrait); lc2.classList.add('show');
+      lc2.classList.toggle('portrait', portrait); lc2.classList.toggle('show', !noLcd);
       LCD.key = '';
     }
     window.dispatchEvent(new Event('insetresize'));
@@ -2447,6 +2444,13 @@ $('save').onclick = async () => {
 };
 $('showRank').onclick = async () => { if (G && G.state === 'play') setPause(true); $('pause').classList.remove('show'); renderRank($('rankList'), await Rank.list(), null); $('rank').classList.add('show'); };
 $('closeRank').onclick = () => { $('rank').classList.remove('show'); if (paused) $('pause').classList.add('show'); };
+// せまい画面の上の帯: 題名を押すと読みこみ直し、三本線でランキング・このサービスについて
+$('titleH').onclick = () => { if (document.body.classList.contains('narrow')) location.reload(); };
+const hmenu = (open) => { $('hmenu').classList.toggle('open', open); $('hamb').setAttribute('aria-expanded', String(open)); };
+$('hamb').onclick = (e) => { e.stopPropagation(); hmenu(!$('hmenu').classList.contains('open')); };
+document.addEventListener('pointerdown', (e) => { if (!e.target.closest('#hmenu, #hamb')) hmenu(false); });
+$('mRank').onclick = () => { hmenu(false); $('showRank').onclick(); };
+$('mAbout').onclick = () => { hmenu(false); $('aboutBtn').onclick(); };
 $('aboutBtn').onclick = () => { if (G && G.state === 'play') setPause(true); $('pause').classList.remove('show'); $('about').classList.add('show'); };
 $('closeAbout').onclick = () => { $('about').classList.remove('show'); if (paused) $('pause').classList.add('show'); };
 

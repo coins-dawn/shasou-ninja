@@ -36,14 +36,30 @@
   #side .src { font-size:9px; line-height:1.5; color:#8a847a; }
   #side .src a { color:#8a847a; }
   #side .playing-note { font-size:10px; color:var(--muted); margin:0; }
-  /* せまい画面（スマホ）: 左の欄は、遊ぶ前だけ全画面のメニューに */
-  body.narrow #side { position:fixed; inset:0; display:none; flex-basis:auto; }
-  body.narrow.menu #side { display:flex; }
+  #side .brand { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  #side .cfg { display:flex; flex-direction:column; gap:12px; flex:1 1 auto; }
+  #hamb { display:none; background:none; border:0; padding:4px; margin:0; color:var(--fg); box-shadow:none; cursor:pointer; }
+  #hamb svg { width:34px; height:34px; display:block; fill:currentColor; }
+  #hmenu { display:none; position:fixed; z-index:50; right:8px; top:56px; flex-direction:column; gap:8px; padding:10px;
+    background:#000; border:2px solid var(--line); border-radius:6px; min-width:210px; }
+  #hmenu.open { display:flex; }
+  #hmenu button { width:100%; font-size:14px; padding:8px 12px; }
+  /* せまい画面（スマホ）: 左の欄は上の帯（題名と三本線）に。設定は遊ぶ前だけ、真ん中に重ねて出す */
+  body.narrow #wrap { flex-direction:column; }
+  body.narrow #side { flex:0 0 auto; padding:6px 10px 6px 14px; overflow:visible; }
+  body.narrow #side h1 { font-size:20px; cursor:pointer; }
+  body.narrow #hamb { display:block; }
+  body.narrow #side .cfg { display:none; position:fixed; z-index:30; left:50%; top:76px; transform:translateX(-50%);
+    width:min(88vw, 380px); max-height:calc(100% - 96px); overflow-y:auto; box-sizing:border-box; padding:16px; background:#000;
+    border-radius:6px; box-shadow:0 6px 24px rgba(0,0,0,.45); }
+  body.narrow.menu #side .cfg { display:flex; }
+  body.narrow #side .howto, body.narrow #showRank, body.narrow #aboutBtn { display:none; }
+  body.narrow #side .actions { margin-top:4px; }
   #main { flex:1 1 0; min-height:0; position:relative; background:#ffffff; }
   #c { position:absolute; inset:0; width:100%; height:100%; display:block; }
   #map { position:absolute; background:#dfe6ea; border:4px solid #2a2a30; border-radius:6px; overflow:hidden; box-sizing:border-box;
     pointer-events:none; box-shadow:4px 5px 0 rgba(20,18,30,.35); }
-  #map.portrait { display:none; }  /* スマホの縦画面では地図を出さない */
+  #map.portrait { border:0; border-top:4px solid #2a2a30; border-radius:0; box-shadow:none; }
   #lcd.portrait { border:0; border-bottom:4px solid #2a2a30; border-radius:0; box-shadow:none; }
   /* 縦画面: 案内画面の余った高さは駅名の欄に回す */
   #lcd.portrait .body { justify-content:flex-start; }
@@ -153,9 +169,12 @@
 <body>
 <div id="wrap">
   <aside id="side">
-    <div>
-      <h1>ぼくらの<canvas id="logoNinja" width="44" height="36" aria-hidden="true"></canvas><br>車窓ニンジャ</h1>
+    <div class="brand">
+      <h1 id="titleH">ぼくらの<canvas id="logoNinja" width="44" height="36" aria-hidden="true"></canvas><br>車窓ニンジャ</h1>
+      <!-- 三本線: Iconify mdi:menu（Apache-2.0） -->
+      <button id="hamb" aria-label="メニュー" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2z"/></svg></button>
     </div>
+    <div class="cfg">
     <p class="howto">屋根から屋根へ飛び移って、電車についていこう。<br>タップ／スペース: ジャンプ（長押しで高く・空中でもう1回）</p>
     <div class="opts">
       <label>路線<select id="lineSel"><option value="liner">日暮里・舎人ライナー</option></select></label>
@@ -172,7 +191,9 @@
       <button class="sub" id="aboutBtn">このサービスについて</button>
     </div>
     <div class="src">出典: 国土交通省 PLATEAU・東京都交通局 GTFS（公共交通オープンデータセンター）・© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors・国土地理院 ／ くわしくは「このサービスについて」</div>
+    </div>
   </aside>
+  <nav id="hmenu"><button class="sub" id="mRank">ランキング</button><button class="sub" id="mAbout">このサービスについて</button></nav>
   <div id="main">
     <canvas id="c"></canvas>
     <div id="lcd"></div>
@@ -230,8 +251,8 @@
 </div>
 
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-<script src="game.js?v=20261116t"></script>
-<script src="map3d.js?v=20261116t"></script>
-<script src="pax.js?v=20261116t"></script>
+<script src="game.js?v=20261116v"></script>
+<script src="map3d.js?v=20261116v"></script>
+<script src="pax.js?v=20261116v"></script>
 </body>
 </html>
