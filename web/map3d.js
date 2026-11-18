@@ -95,12 +95,43 @@ async function start() {
     for (let s = s0; s <= s1 + 0.01; s += Math.max(2, (s1 - s0) / 12)) { L.push(offset(s, w / 2)); R.push(offset(s, -w / 2)); }
     return [...L, ...R.reverse(), L[0]];
   }
-  const CAR = 9, GAP = 0.6, NCAR = 5;
+  // 電車: 日暮里・舎人ライナー（5 両・新交通システムの小さな車体）。白い車体、窓の帯、路線の色（ローズ）の線、
+  // 両はしは運転台（前に向かって細くなり、大きな前面の窓）、屋根に冷房の箱。部品ごとに高さと色を変えて積む
+  const CAR = 9, GAP = 0.6, NCAR = 5, WID = 3.2;
+  const BASE = 8.6, SKIRT = 9.1, BELT = 9.85, STRIPE = 10.2, WIN = 11.15, ROOF = 11.85, AC = 12.3;
+  function strip(s0, s1, w0, w1) { // s0→s1 で幅が w0→w1 に変わる帯（運転台の先細り）
+    const L = [], R = [], n = 4;
+    for (let i = 0; i <= n; i++) { const t = i / n, s = s0 + (s1 - s0) * t, w = w0 + (w1 - w0) * t; L.push(offset(s, w / 2)); R.push(offset(s, -w / 2)); }
+    return [...L, ...R.reverse(), L[0]];
+  }
   function trainFeatures(S) {
     const fs = [];
+    const add = (ring, b, h, col) => fs.push({ type: 'Feature', properties: { b, h, col }, geometry: { type: 'Polygon', coordinates: [ring] } });
     for (let i = 0; i < NCAR; i++) {
       const s1 = S + 18 - i * (CAR + GAP), s0 = s1 - CAR;
-      fs.push({ type: 'Feature', properties: { c: i === 0 ? 1 : 0 }, geometry: { type: 'Polygon', coordinates: [band(s0, s1, 3.2)] } });
+      const nose = 1.3, front = i === 0, tail = i === NCAR - 1;
+      const a = tail ? s0 + nose : s0, z = front ? s1 - nose : s1; // 箱の部分
+      add(band(a + 0.3, z - 0.3, WID - 0.5), BASE, SKIRT, '#4b5058');           // 床下（台車・案内輪のあたり）
+      add(band(a, z, WID), SKIRT, BELT, '#f3f4f1');                              // 腰の白
+      add(band(a, z, WID + 0.02), BELT, STRIPE, '#d6467f');                      // 路線の色の線
+      add(band(a, z, WID), STRIPE, WIN, '#f3f4f1');                              // 窓まわりの白（柱）
+      add(band(a + 0.5, z - 0.5, WID + 0.04), STRIPE + 0.12, WIN - 0.1, '#24364f'); // 窓の帯（少し外に出して見せる）
+      add(band(a, z, WID), WIN, ROOF, '#e4e7ea');                                // 屋根
+      add(band((a + z) / 2 - 1.3, (a + z) / 2 + 1.3, WID - 1.2), ROOF, AC, '#a4aab2'); // 冷房の箱
+      // 運転台（先頭と最後）: 前に向かって細く、上は前面の大きな窓、下は白に路線の色
+      const cab = (c0, c1) => { // c0 = 箱の側、c1 = 先
+        add(strip(c0, c1, WID, WID * 0.62), SKIRT, BELT, '#f3f4f1');
+        add(strip(c0, c1, WID + 0.02, WID * 0.64), BELT, STRIPE, '#d6467f');
+        add(strip(c0, c1, WID, WID * 0.62), STRIPE, ROOF - 0.15, '#1c2638');
+        add(strip(c0, c0 + (c1 - c0) * 0.55, WID, WID * 0.8), ROOF - 0.15, ROOF, '#e4e7ea');
+      };
+      if (front) cab(z, s1);
+      if (tail) cab(a, s0);
+    }
+    // 車両のつなぎ目（ほろ）
+    for (let i = 0; i < NCAR - 1; i++) {
+      const g1 = S + 18 - i * (CAR + GAP) - CAR, g0 = g1 - GAP;
+      add(band(g0 - 0.05, g1 + 0.05, WID - 0.9), SKIRT, WIN - 0.2, '#3b3f47');
     }
     return { type: 'FeatureCollection', features: fs };
   }
@@ -168,11 +199,11 @@ async function start() {
       infoDone = true;
     }
 
-    // 電車（日暮里・舎人ライナーの色に近い白と青）
+    // 電車（部品ごとの高さと色は trainFeatures）
     map.addSource('train', { type: 'geojson', data: trainFeatures(L10[0][2]) });
     map.addLayer({ id: 'train', type: 'fill-extrusion', source: 'train',
-      paint: { 'fill-extrusion-color': ['case', ['==', ['get', 'c'], 1], '#2f6fd0', '#7fa6dc'],
-        'fill-extrusion-base': 8.6, 'fill-extrusion-height': 12.2, 'fill-extrusion-opacity': 1 } });
+      paint: { 'fill-extrusion-color': ['get', 'col'],
+        'fill-extrusion-base': ['get', 'b'], 'fill-extrusion-height': ['get', 'h'], 'fill-extrusion-opacity': 1 } });
 
     // 駅の名前
     for (const [name, la, lo] of map3.stations) {

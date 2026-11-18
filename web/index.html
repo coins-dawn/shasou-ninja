@@ -74,7 +74,7 @@
   #hud { position:absolute; z-index:10; display:flex; flex-wrap:nowrap; align-items:center; gap:4px 8px; padding:4px 8px;
     background:#1d1a26; color:var(--fg); box-sizing:border-box; border:4px solid #2a2a30; border-radius:6px; box-shadow:4px 5px 0 rgba(20,18,30,.35);
     pointer-events:none; }
-  #hud.portrait { border:0; border-top:4px solid #2a2a30; border-radius:0; box-shadow:none; }
+  #hud.portrait { border:0; border-bottom:4px solid #2a2a30; border-radius:0; box-shadow:none; }
   #hud.two { flex-wrap:wrap; }
   #hud.two .btns { flex:1 0 100%; justify-content:flex-end; }
   #hud .stat { flex:1 1 0; min-width:0; display:flex; flex-direction:column; justify-content:center; line-height:1.1; }
@@ -127,6 +127,7 @@
   #lcd .col .xf { font-size:.5em; color:#444; text-align:center; margin-top:.25em; min-height:2.4em; line-height:1.15; white-space:nowrap; }
   #lcd .foot { font-size:.5em; color:#666; text-align:right; padding:0 .6em .3em; }
   #hud #hDist { color:#ff8a5b; }
+  #hud #hPts { color:var(--accent); }
   #hud .unit { font-size:12px; color:var(--muted); margin-left:2px; }
   #hud .btns { display:flex; gap:6px; flex:0 0 auto; margin-left:auto; }
   #pauseBtn, #autoBtn { pointer-events:auto; display:flex; visibility:hidden; align-items:center; gap:6px; font-size:12px; padding:6px 8px; background:#4a4360; color:#fff; flex:0 0 auto; white-space:nowrap; }
@@ -203,6 +204,7 @@
     <div id="lcd"></div>
     <div id="hud">
       <div class="stat"><small>きょり</small><b id="hDist">0 m</b></div>
+      <div class="stat"><small>スコア</small><b><span id="hPts">0</span><span class="unit">点</span></b></div>
       <div class="stat"><small>時速</small><b><span id="hKmh">0</span><span class="unit">km</span></b></div>
       <div class="stat"><small>駅</small><b><span id="hSt">0</span><span class="unit">駅</span></b></div>
       <div class="btns"><button id="autoBtn"><span id="autoLabel">オート実行</span></button><button id="pauseBtn"><span class="bars"></span><span>ストップ</span></button></div>
@@ -255,8 +257,8 @@
 </div>
 
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-<script src="game.js?v=20261118a"></script>
-<script src="map3d.js?v=20261118a"></script>
-<script src="pax.js?v=20261118a"></script>
+<script src="game.js?v=20261118d"></script>
+<script src="map3d.js?v=20261118d"></script>
+<script src="pax.js?v=20261118d"></script>
 </body>
 </html>

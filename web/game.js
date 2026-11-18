@@ -835,7 +835,7 @@ function resize() {
   // 横持ち: 電車の場面はドアの右のふちまで。その右（画面の約 3 割）は全部 3D の地図
   const side = 0;
   const trainW = portrait ? W : Math.round(W * 0.7);
-  // 縦持ち（スマホ）: 上から 車内の場面 → きょり・ボタンの欄 → 3D の地図（題名の帯は HTML の側）。案内画面は出さない
+  // 縦持ち（スマホ）: 上から きょり・ボタンの欄 → 車内の場面 → 3D の地図（題名の帯は HTML の側）。案内画面は出さない
   const hudEl = document.getElementById('hud');
   if (hudEl) { hudEl.classList.toggle('portrait', portrait); hudEl.classList.toggle('two', portrait && W < 340); if (portrait) hudEl.style.width = `${W}px`; }
   const hudH = portrait && hudEl ? (hudEl.offsetHeight || 44) : 0;
@@ -843,7 +843,7 @@ function resize() {
   const sw = W, sh = portrait ? Math.max(120, Math.round((H - hudH) / 2)) : H;
   // 縦持ちの車内は、場面の高さに天井から床までが収まる大きさ（幅は芯の 0.68〜0.92 の範囲で見せる）
   const coreW = portrait ? Math.min(sw / 0.68, Math.max(sw / 0.92, sh * 1.65)) : Math.min(sh / 0.66, trainW / 0.9);
-  SCN = { x: 0, y: 0, w: sw, h: sh, portrait, side };
+  SCN = { x: 0, y: portrait ? hudH : 0, w: sw, h: sh, portrait, side }; // 縦持ちは きょり・ボタンの欄 → 車内 → 地図
   PX = Math.max(2, Math.round((coreW * DPR) / (portrait ? 300 : 480))) / DOT;
   LW = Math.ceil((sw * DPR) / PX); LH = Math.ceil((sh * DPR) / PX);
   low.width = LW; low.height = LH;
@@ -881,8 +881,8 @@ function resize() {
   if (mp) mp.classList.toggle('portrait', portrait);
   if (mp && portrait) {
     const hud = document.getElementById('hud');
-    if (hud) Object.assign(hud.style, { left: '0px', top: `${sh}px`, width: `${W}px` });
-    const top = sh + hudH;
+    if (hud) Object.assign(hud.style, { left: '0px', top: '0px', width: `${W}px` });
+    const top = hudH + sh;
     Object.assign(mp.style, { left: '0px', top: `${top}px`, width: `${W}px`, height: `${Math.max(80, H - top)}px` });
     const lc2 = document.getElementById('lcd');
     if (lc2) lc2.classList.remove('show');
@@ -2089,6 +2089,7 @@ const hudLast = {};
 function hudSet(id, v) { if (hudLast[id] !== v) { hudLast[id] = v; const el = document.getElementById(id); if (el) el.textContent = v; } }
 function updateHud() {
   hudSet('hDist', fmtDist(G.dist));
+  hudSet('hPts', Math.round(Math.round(G.dist) * optMult(G.opts || OPTS)).toLocaleString()); // スコア（きょり × 倍率。終わったときの点と同じ）
   hudSet('hKmh', G.skip ? '―' : `${Math.round(G.speed * 3.6)}`);
   hudSet('hSt', `${G.stationsPassed}`);
   const pn = document.getElementById('playingNote');
