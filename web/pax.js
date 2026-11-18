@@ -902,10 +902,12 @@ window.paxStation = function (idx) {
   if (idx >= last) return;
   const prog = Math.min(1, Math.max(0, (idx - PAX_FROM) / Math.max(1, last - 1 - PAX_FROM)));
   const cap = sl.seats.length + sl.stands.length;
-  // 混雑度（左の欄）: すかすか＝座席がだんだん埋まり、立つ人は少し／こみこみ＝はじめから 6 割、後半は満員
-  const crowd = (window.OPTS && G && G.opts ? G.opts.crowd : 'low');
+  // 混雑度（左の欄）: すかすか＝ずっと座席の 3 割ほど、立つ人なし／少しずつ混む＝空いた車内から、座席が埋まり、終わりごろは立つ人でいっぱい
+  //                   こみこみ＝はじめから 6 割、後半は満員
+  const crowd = (window.OPTS && G && G.opts ? G.opts.crowd : 'grow');
   const target = crowd === 'high' ? Math.round(cap * Math.min(1, 0.65 + 0.6 * prog))
-    : Math.round(sl.seats.length * Math.min(1, 0.2 + 0.8 * prog) + sl.stands.length * 0.3 * prog ** 1.5);
+    : crowd === 'grow' ? Math.round(sl.seats.length * Math.min(1, 0.2 + 1.2 * prog) + sl.stands.length * Math.min(1, Math.max(0, 1.3 * prog - 0.3)))
+    : Math.round(sl.seats.length * (0.25 + 0.1 * prog));
   // 降りる人（座っていた人は立ち上がってから、画面の外へ歩いていく）
   const inCar = PAX.filter((p) => p.state === 'in');
   const nOff = Math.min(inCar.length, Math.floor(inCar.length * 0.15 + hash(idx, 5, PAX_SEED) * 1.3));

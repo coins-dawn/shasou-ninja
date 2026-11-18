@@ -106,12 +106,13 @@ const VIEW = 'section';
 const OFF = (d) => (VIEW === 'section' ? 0 : SC.HH * (1 - Math.exp(-d / SC.LAM))); // 奥行き → 見かけの持ち上がり
 
 // ---- 左の欄の設定（「しゅっぱつ」で G.opts に写す） ----
-const OPTS = { size: 'S', diff: 'easy', crowd: 'low', cam: 'fixed' };
+const OPTS = { size: 'S', diff: 'easy', crowd: 'grow', cam: 'follow' };
 window.OPTS = OPTS;
 // 景色・車内のドットの細かさ。2 = 忍者と同じ細かさ（忍者の 1 ドット = 景色の 1 ドット）、1 = 元の粗さ（忍者だけ 2 倍細かい）
 const DOT = (() => { const m = /dot=(\d)/.exec(location.search); return m ? Math.max(1, +m[1]) : 2; })();
 const SIZE_MUL = { S: 1, M: 1.5, L: 2 };            // ニンジャの大きさ（見た目だけ）
-const optMult = (o) => (o.diff === 'hard' ? 2 : 1) * (o.crowd === 'high' ? 2 : 1); // ポイントの倍率
+const CROWD_MULT = { low: 1, grow: 1.5, high: 2 };
+const optMult = (o) => (o.diff === 'hard' ? 2 : 1) * (CROWD_MULT[o.crowd] || 1); // ポイントの倍率
 const ninjaMul = () => SIZE_MUL[(G && G.opts ? G.opts : OPTS).size] || 1;
 
 // ---- ランキング（いまは端末内。あとで GAS の API に差し替える） ----
@@ -794,10 +795,10 @@ async function die(kind, goalText) {
   }
   const from = SC.sts[G.from].name;
   const mult = optMult(G.opts);
-  G.dead = { why, where: `${from}から・${kind === 'goal' ? 'ゴール' : whereNow()}`, dist: G.dist, mult, pts: Math.round(G.dist) * mult };
+  G.dead = { why, where: `${from}から・${kind === 'goal' ? 'ゴール' : whereNow()}`, dist: G.dist, mult, pts: Math.round(Math.round(G.dist) * mult) };
   $('overWhy').textContent = why;
   $('overScore').textContent = `${G.dead.pts.toLocaleString()} 点`;
-  const tags = [G.opts.diff === 'hard' ? 'むずかしい ×2' : '', G.opts.crowd === 'high' ? 'こみこみ ×2' : ''].filter(Boolean).join('・');
+  const tags = [G.opts.diff === 'hard' ? 'むずかしい ×2' : '', G.opts.crowd === 'high' ? 'こみこみ ×2' : G.opts.crowd === 'grow' ? '少しずつ混む ×1.5' : ''].filter(Boolean).join('・');
   $('overMult').textContent = `${fmtDist(G.dist)}${mult > 1 ? `（${tags}）` : ''}`;
   $('overWhere').textContent = detail;
   $('nameRow').style.display = G.autoUsed ? 'none' : 'flex';

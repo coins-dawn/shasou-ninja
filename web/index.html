@@ -184,8 +184,8 @@
       <label>出発駅<select id="startSt"></select></label>
       <label>ニンジャの大きさ<select id="sizeSel"><option value="L">大</option><option value="M">中</option><option value="S" selected>小</option></select></label>
       <label>難易度<select id="diffSel"><option value="easy" selected>やさしい</option><option value="hard">むずかしい（風呂敷なし）</option></select></label>
-      <label>混雑度<select id="crowdSel"><option value="low" selected>すかすか</option><option value="high">こみこみ</option></select></label>
-      <label>カメラ<select id="camSel"><option value="fixed" selected>固定</option><option value="follow">ニンジャをおいかける</option></select></label>
+      <label>混雑度<select id="crowdSel"><option value="low">すかすか</option><option value="grow" selected>少しずつ混む</option><option value="high">こみこみ</option></select></label>
+      <label>カメラ<select id="camSel"><option value="fixed">固定</option><option value="follow" selected>ニンジャをおいかける</option></select></label>
       <p class="mult" id="multNote"></p>
       <p class="playing-note" id="playingNote" style="display:none">設定は、つぎの「しゅっぱつ」から</p>
     </div>
@@ -218,7 +218,7 @@
     <li>屋根から屋根へ飛び移って、電車についていこう。地面に落ちるか、窓の外に置いていかれたらおしまい</li>
     <li>タップ／スペース: ジャンプ（長押しで高く・空中でもう1回）。壁にぶつかったら長押しで駆け上がる</li>
     <li>窓の外の建物は、ほんとうの線路沿いの建物です。右の地図で、この先の乗れる屋根（黄）を先読みできます</li>
-    <li>ポイントは走ったきょり（m）。「むずかしい」「こみこみ」はそれぞれ 2 倍</li>
+    <li>ポイントは走ったきょり（m）。「むずかしい」は 2 倍、混雑度は「少しずつ混む」が 1.5 倍・「こみこみ」が 2 倍</li>
     <li>オート実行を使った回は、ランキングに残せません</li>
   </ul>
   <h3>データの出典</h3>
@@ -255,8 +255,8 @@
 </div>
 
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-<script src="game.js?v=20261117c"></script>
-<script src="map3d.js?v=20261117c"></script>
-<script src="pax.js?v=20261117c"></script>
+<script src="game.js?v=20261118a"></script>
+<script src="map3d.js?v=20261118a"></script>
+<script src="pax.js?v=20261118a"></script>
 </body>
 </html>
