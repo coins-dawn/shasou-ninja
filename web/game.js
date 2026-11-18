@@ -2095,6 +2095,8 @@ function updateHud() {
   const pn = document.getElementById('playingNote');
   if (pn) { const v = G.state === 'play' ? 'block' : 'none'; if (pn.style.display !== v) pn.style.display = v; }
   const hb = document.getElementById('hud');
+  // 数字が伸びて欄が 2 行になったら（または戻ったら）、並べ直す
+  if (hb && hb.offsetHeight !== (updateHud.h || 0)) { const first = !updateHud.h; updateHud.h = hb.offsetHeight; if (!first) setTimeout(resize, 0); }
   if (hb) { hb.classList.toggle('playing', G.state === 'play'); hb.classList.toggle('paused', !!paused); hb.classList.toggle('auto', !!G.auto); }
   hudSet('autoLabel', G.auto ? 'オート実行中' : 'オート実行');
   updateLcd();

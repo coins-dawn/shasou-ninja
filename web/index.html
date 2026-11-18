@@ -71,13 +71,13 @@
   #lcd.portrait .body > .cols:first-child .col .vnw { flex:1 1 auto; height:auto; min-height:5.4em; }
   #map .maplibregl-ctrl-attrib, #map .maplibregl-ctrl-attrib a, #map .maplibregl-ctrl-attrib-button { pointer-events:auto; }
   /* きょり・時速・駅とボタン: 案内画面と地図のあいだの 1 行（地図には重ねない） */
-  #hud { position:absolute; z-index:10; display:flex; flex-wrap:nowrap; align-items:center; gap:4px 8px; padding:4px 8px;
+  #hud { position:absolute; z-index:10; display:flex; flex-wrap:wrap; align-items:center; gap:4px 8px; padding:4px 8px;
     background:#1d1a26; color:var(--fg); box-sizing:border-box; border:4px solid #2a2a30; border-radius:6px; box-shadow:4px 5px 0 rgba(20,18,30,.35);
     pointer-events:none; }
   #hud.portrait { border:0; border-bottom:4px solid #2a2a30; border-radius:0; box-shadow:none; }
   #hud.two { flex-wrap:wrap; }
   #hud.two .btns { flex:1 0 100%; justify-content:flex-end; }
-  #hud .stat { flex:1 1 0; min-width:0; display:flex; flex-direction:column; justify-content:center; line-height:1.1; }
+  #hud .stat { flex:1 0 auto; display:flex; flex-direction:column; justify-content:center; line-height:1.1; }
   #hud .stat:first-child { flex-grow:1.6; }
   #hud small { font-size:10px; color:var(--muted); }
   #hud b { font-weight:400; font-size:clamp(13px, 1.3vw, 21px); white-space:nowrap; }
@@ -257,8 +257,8 @@
 </div>
 
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-<script src="game.js?v=20261118d"></script>
-<script src="map3d.js?v=20261118d"></script>
-<script src="pax.js?v=20261118d"></script>
+<script src="game.js?v=20261118e"></script>
+<script src="map3d.js?v=20261118e"></script>
+<script src="pax.js?v=20261118e"></script>
 </body>
 </html>
