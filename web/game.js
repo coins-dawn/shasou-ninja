@@ -11,6 +11,9 @@ const P = {
   CUT: 0.35,        // 短く押して離したら、上昇をここまで弱める（短押しと長押しの差）
   WALL_SLIDE: -5,   // 壁にはりついたときの落ちる速さ
   WALL_RUN: 30,     // 押しっぱなしで壁を駆け上がる速さ
+  HOOK_T: 0.2,      // 高い壁は鉤縄でたぐり上がる: 残りの高さを この秒数で詰める速さ（上に近づくと WALL_RUN に戻る）
+  HOOK_VMAX: 120,   // そのときの速さの上限
+  SPRING_VMAX: 80,  // しなり竹ではね上げる速さの上限（58m の屋根まで届く）
   STEP: 0.8,        // これ以下の段差は走って上がれる
   FOOT: 0.5,        // 足の幅（半分）
   CATCHUP: 7,       // 置いていかれたとき、追いつく速さ
@@ -432,16 +435,17 @@ function placeIn(s0, s1) {
 
 // ---- 届かない隙間に「しなり竹」 ----
 // 長押し＋空中ジャンプをいちばんよい間合いで使ったときの、高さ y0 から地面までの滞空時間 [s]
-function maxAirTime(y0) {
+function maxAirTime(y0) { // 高さ y0 から跳んで（空中ジャンプも最適に使って）、高さ 0 まで下りてくるまでの秒数。y0 は負でもよい（上の屋根へ）
   const dt = 1 / 120;
   const sim = (td) => {
-    let y = y0, vy = P.JUMP_V, hold = 0, t = 0, used = false;
+    let y = y0, vy = P.JUMP_V, hold = 0, t = 0, used = false, above = y0 > 0;
     for (let i = 0; i < 2000; i++) {
       if (!used && t >= td) { vy = P.DOUBLE_V; hold = 0; used = true; }
       let g = P.G;
       if (vy > 0 && hold < P.HOLD_T) { g *= P.HOLD_G; hold += dt; }
       vy = Math.max(-30, vy - g * dt); y += vy * dt; t += dt;
-      if (y <= 0) return t;
+      if (y > 0) above = true;
+      if (y <= 0 && vy < 0) return above ? t : 0; // 一度も高さ 0 の上に出られなければ届かない
     }
     return t;
   };
@@ -456,28 +460,50 @@ function buildSprings(sc) {
   const st = sc.step, n = sc.prof.length;
   const top = (k) => Math.max(sc.prof[k] || 0, (sc.prof2 && sc.prof2[k]) || 0);
   const memo = new Map();
-  const air = (y0) => { const key = Math.round(y0); if (!memo.has(key)) memo.set(key, maxAirTime(key)); return memo.get(key); };
+  const air = (y0) => { const key = Math.round(y0 * 2) / 2; if (!memo.has(key)) memo.set(key, maxAirTime(key)); return memo.get(key); };
+  // 向こうが 2 列目（奥）の建物だけのところは、その前の地面も隙間（壁にならない）。竹はそこまで続ける
+  const front2 = (j) => { let q = j; while (q < n && !((sc.prof[q] || 0) > 0) && top(q) > 0) q++; return q; };
   sc.springs = [];
   for (let k = 1; k < n;) {
     if (top(k) > 0) { k++; continue; }
     let j = k; while (j < n && top(j) <= 0) j++;
     const s0 = k * st, s1 = j * st, w = s1 - s0;
-    // 駅を出てすぐ（40m 以内）の隙間: 電車がまだ遅く、停まったところが屋根のはしだと、出発したとたんに落ちてしまう（谷在家など）
     const afterSt = sc.sts.some((st) => s0 >= st.s - 3 && s0 <= st.s + 40);
-    if (j < n && w >= 3 && w <= P.BIG_GAP && afterSt) {
-      sc.springs.push({ a: s0 + 0.5, b: s1 - 0.5, s0, s1, w: Math.round(w), y1: top(j), reach: 0, t: 0, station: true });
-    } else if (j < n && w >= 6 && w <= P.BIG_GAP) {
+    if (afterSt) { k = j; continue; } // 駅を出てすぐは下でまとめて
+    if (j < n && w >= 6 && w <= P.BIG_GAP) {
       const ts = trainSpeed(s0 + w / 2), i = sc.sts.indexOf(ts.prev);
       const v = ts.v * Math.min(P.PACE_MAX, P.PACE0 + P.PACE_UP * Math.max(0, i));
-      const y0 = top(k - 1), reach = v * air(y0);
-      if (w > reach * 0.7) { // 最適な間合いの 7 割を超える隙間は、人の操作では渡れない（自動操縦が落ちたのも 6〜7 割を超えるところ）
+      // 向こうの屋根に乗る（高い屋根は壁の下のほう 2.5m までに取りつけば、鉤縄で登れる）まで空中にいられる時間で、届く距離を見る
+      // 向こうが 1 列目の建物なら壁に取りついて登れる。2 列目（奥）だけなら壁にならないので、屋根の高さまで跳べないと乗れない
+      const y0 = top(k - 1), y1 = top(j), y1L = sc.prof[j] || 0;
+      const ht = y1L > 0 ? Math.min(y1L, 2.5) : y1, reach = v * air(y0 - ht);
+      // 踏み切る屋根の長さ（同じくらいの高さが続くところ）。短い屋根は、降りたとたんに跳ぶことになり間合いが取れない
+      let i0 = k - 1; while (i0 > 0 && top(i0 - 1) > 0 && Math.abs(top(i0 - 1) - y0) < 1.5) i0--;
+      const L0 = (k - i0) * st;
+      // 最適な間合いの 55%（踏み切りが短い屋根なら 50%）を超える隙間は、人の操作ではまず渡れない
+      // （人に近い押し方のシミュレーション scripts/sim_human で落ちたのは、低い屋根から 55% を超える隙間。もとの 7 割では竹がなかった）
+      if (w > reach * (L0 < v * 0.6 ? 0.5 : 0.55)) {
         const drop = v * Math.sqrt((2 * y0) / P.G); // 何もせず屋根のはしから落ちたときに地面に着くところ
-        const a = Math.min(s1 - 4, s0 + Math.max(2, drop * 0.7)), b = s1 - 1.5;
+        const a = Math.min(s1 - 4, s0 + Math.max(2, drop * 0.7)), b = Math.max(s1 - 1.5, front2(j) * st - 1.5);
         if (b - a >= 2) sc.springs.push({ a, b, s0, s1, w: Math.round(w), y1: top(j), reach: Math.round(reach), t: 0 });
       }
     }
     k = j;
   }
+  // 駅を出てすぐ（40m 以内）の隙間: 電車がまだ遅く、停まったところが屋根のはしだと、出発したとたんに落ちてしまう（谷在家・江北など）。
+  // 1 列目の屋根だけで見る（奥の建物の前も、立っていれば落ちる）
+  for (const sta of sc.sts) {
+    const k0 = Math.max(1, Math.ceil((sta.s - 3) / st)), k1 = Math.min(n - 1, Math.floor((sta.s + 40) / st));
+    for (let k = k0; k <= k1;) {
+      if ((sc.prof[k] || 0) > 0 || !((sc.prof[k - 1] || 0) > 0 || k === k0)) { k++; continue; }
+      let j = k; while (j < n && !((sc.prof[j] || 0) > 0)) j++;
+      const s0 = k * st, s1 = j * st, w = s1 - s0;
+      if (j < n && w >= 3 && w <= P.BIG_GAP && !sc.springs.some((q) => q.s1 > s0 && q.s0 < s1))
+        sc.springs.push({ a: s0 + 0.5, b: s1 - 0.5, s0, s1, w: Math.round(w), y1: top(j), reach: 0, t: 0, station: true });
+      k = j;
+    }
+  }
+  sc.springs.sort((p, q) => p.s0 - q.s0);
 }
 function springAt(x) {
   for (const sp of SC.springs) if (x >= sp.a && x <= sp.b) return sp;
@@ -649,7 +675,7 @@ function step(dt) {
   const front = roofUnder(nx);
   G.wall = false;
   if (front > G.y + P.STEP && front > roofUnder(prevX) + 0.01) {
-    G.wallBid = bldgAt(nx + P.FOOT);
+    G.wallBid = bldgAt(nx + P.FOOT); G.wallTop = front;
     nx = prevX; G.wall = true;
   }
   G.off = nx - G.S;
@@ -665,8 +691,14 @@ function step(dt) {
   else if (G.momo) g *= P.MOMO_G;
   G.vy = Math.max(G.momo ? P.MOMO_VMAX : -30, G.vy - g * dt);
   tryJump();
-  if (G.wall && pressed) G.vy = Math.max(G.vy, P.WALL_RUN);       // 壁を駆け上がる
-  else if (G.wall && G.vy < P.WALL_SLIDE) G.vy = P.WALL_SLIDE;
+  // 壁を駆け上がる。高い壁は鉤縄でぐいっとたぐり上がる（登っているあいだに電車に置いていかれないように）
+  if (G.wall && pressed) {
+    const target = Math.max(P.WALL_RUN, Math.min(P.HOOK_VMAX, ((G.wallTop || 0) + 1 - G.y) / P.HOOK_T));
+    G.vy = G.climbing ? target : Math.max(G.vy, target); G.climbing = true;
+  } else {
+    if (!G.wall) G.climbing = false;
+    if (G.wall && G.vy < P.WALL_SLIDE) G.vy = P.WALL_SLIDE;
+  }
   const under = roofUnder(nx);
   const prevY = G.y;
   G.y += G.vy * dt;
@@ -688,8 +720,8 @@ function step(dt) {
   const sp = land > 0 ? null : springAt(nx);
   if (sp && G.vy < 0 && G.y <= SPRING_H && prevY >= SPRING_H - 1) {
     const t = Math.max(0.35, (sp.s1 + 1 - nx) / Math.max(3, v));
-    const want = Math.max(Math.sqrt(2 * P.G * (Math.min(sp.y1, 15) + 1.5)), (sp.y1 + 1.5) / t + (P.G * t) / 2);
-    G.y = SPRING_H; G.vy = Math.max(20, Math.min(40, want)); G.jumps = 1; G.holdT = P.HOLD_T; G.glide = false;
+    const want = Math.max(Math.sqrt(2 * P.G * (sp.y1 + 1.5)), (sp.y1 + 1.5) / t + (P.G * t) / 2); // 向こうの屋根の高さまで（高い屋根でも）
+    G.y = SPRING_H; G.vy = Math.max(20, Math.min(P.SPRING_VMAX, want)); G.jumps = 1; G.holdT = P.HOLD_T; G.glide = false;
     sp.t = 0.4; puff(nx, SPRING_H, 6, '#d9f0a0');
     say('しなり竹！');
   }
