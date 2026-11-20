@@ -244,7 +244,7 @@
   <p id="overMult" style="color:var(--muted);font-size:13px;margin-top:0"></p>
   <p id="overWhere"></p>
   <p id="overNote" style="display:none;color:var(--muted);font-size:13px">オート実行を使ったので、この回の記録はランキングに残せません。</p>
-  <div class="row" id="nameRow"><input id="name" maxlength="12" placeholder="なまえ"><button id="save">記録する</button></div>
+  <div class="row" id="nameRow"><input id="name" maxlength="10" placeholder="なまえ（10 文字まで）" autocomplete="nickname"><button id="save">記録する</button></div>
   <h2>ランキング</h2>
   <ol id="rankOver"></ol>
   <div class="row"><button id="retry">もう一回</button><button class="sub" id="overTitle">駅をえらぶ</button></div>
@@ -257,8 +257,9 @@
 </div>
 
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-<script src="game.js?v=20261119e"></script>
-<script src="map3d.js?v=20261119e"></script>
-<script src="pax.js?v=20261119e"></script>
+<script src="core.js?v=20261120a"></script>
+<script src="game.js?v=20261120a"></script>
+<script src="map3d.js?v=20261120a"></script>
+<script src="pax.js?v=20261120a"></script>
 </body>
 </html>

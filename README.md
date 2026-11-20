@@ -54,10 +54,12 @@ python3 scripts/fullrun.py [倍速]           # 自動操縦で終点まで
 ## 作り
 
 - `scripts/` … データの加工（Python 標準ライブラリのみ）
+- `web/core.js` … 動きの計算（画面に依存しない。ランキングの API でも同じファイルを読みこんで使う）
 - `web/index.html`, `web/game.js` … 左の画面（ドアの窓、Canvas 2D）
 - `web/map3d.js` … 右の画面（上空からの地図。MapLibre GL JS 4.7.1 を CDN から）
 - `web/data/scene.json`, `web/data/map.json`, `web/data/buildings.geojson` … 加工済みのデータ（`stage.json` は scene.json の材料）
 - 文字は DotGothic16（Google Fonts）
+- ランキング … Google Apps Script のウェブアプリ＋スプレッドシート（`web/game.js` の `RANK_API`。空のあいだは端末の中だけに残す）
 
 ## データの出典・ライセンス
 
