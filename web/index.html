@@ -25,6 +25,7 @@
   /* 題名の右（2 行ぶんの高さ）で走る忍者 */
   #titleH .tt { white-space:nowrap; flex:0 0 auto; }
   #titleH .tt2 { color:var(--accent); } /* 「車窓ニンジャ」だけ色を変える */
+  #titleH .tt1 { font-size:.8em; } /* 「ぼくらの」は少し小さく */
   #logoNinja { flex:0 1 2.5em; min-width:1.6em; width:2.5em; height:auto; aspect-ratio:28/26; image-rendering:pixelated; image-rendering:crisp-edges; position:relative; top:-.05em;
     filter:drop-shadow(1px 0 0 #f4eedc) drop-shadow(-1px 0 0 #f4eedc) drop-shadow(0 1px 0 #f4eedc) drop-shadow(0 -1px 0 #f4eedc); }
   #side .subt { font-size:11px; color:var(--muted); margin:6px 0 0; }
@@ -178,7 +179,7 @@
 <div id="wrap">
   <aside id="side">
     <div class="brand">
-      <h1 id="titleH"><span class="tt">ぼくらの<br><span class="tt2">車窓ニンジャ</span></span><canvas id="logoNinja" width="28" height="26" aria-hidden="true"></canvas></h1>
+      <h1 id="titleH"><span class="tt"><span class="tt1">ぼくらの</span><br><span class="tt2">車窓ニンジャ</span></span><canvas id="logoNinja" width="28" height="26" aria-hidden="true"></canvas></h1>
       <!-- 三本線: Iconify mdi:menu（Apache-2.0） -->
       <button id="hamb" aria-label="メニュー" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2z"/></svg></button>
     </div>
@@ -261,9 +262,9 @@
 </div>
 
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-<script src="core.js?v=20261120d"></script>
-<script src="game.js?v=20261120d"></script>
-<script src="map3d.js?v=20261120d"></script>
-<script src="pax.js?v=20261120d"></script>
+<script src="core.js?v=20261120e"></script>
+<script src="game.js?v=20261120e"></script>
+<script src="map3d.js?v=20261120e"></script>
+<script src="pax.js?v=20261120e"></script>
 </body>
 </html>
