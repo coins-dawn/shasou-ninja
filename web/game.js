@@ -504,7 +504,8 @@ function resize() {
   // 床が見える高さを半分にするため、絵を床の高さの半分だけ下げる（上は天井が広がる）
   const ch = ch0;
   const oy0 = (LH - ch) * 0.45, floor0 = LH - oy0 - 0.885 * ch;
-  const oy = portrait ? Math.min(0, oy0 + floor0 / 2) : oy0 + floor0 / 2; // 縦持ちは天井を上にそろえ、余りは床が伸びる
+  // 縦持ちは天井を上にそろえ、余りは床が伸びる。横持ちは、天井の線（0.028）より上の余白と、床（0.885 より下）の高さを同じにする
+  const oy = portrait ? Math.min(0, oy0 + floor0 / 2) : (LH - 0.913 * ch) / 2;
   const X = (f) => Math.round(ox + f * cw);
   const Y = (f) => Math.round(f <= 0.57 ? oy + f * ch : oy + 0.57 * ch + (f - 0.57) * ch0);
   const Yb = (f) => Math.round(oy + 0.57 * ch - (0.57 - f) * ch0); // 側窓の下のふちから、元の縮尺で測った高さ
