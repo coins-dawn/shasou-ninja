@@ -88,7 +88,7 @@ const ninjaMul = () => SIZE_MUL[(G && G.opts ? G.opts : OPTS).size] || 1;
 // ---- ランキング ----
 // RANK_API: ランキングの API（Google Apps Script のウェブアプリ）の URL。空のあいだは、この端末の中だけに残す
 // API では、出発のときに「開始券」をもらい、終わったら押した・離した時刻の記録を送る。点数はサーバーが計算しなおす
-const RANK_API = '';
+const RANK_API = 'https://script.google.com/macros/s/AKfycbz0JUalHjc8X4IdqDRSecQXGT6A8VabcHpbFh-O7HpkUWdbsUN8LZPviLcq3RLkQz7-/exec';
 const RANK_OK = !GOD && TIMESCALE === 1; // 確認用の早回し・無敵では送らない
 const Rank = {
   KEY: 'shasou-ninja-rank-v1',
