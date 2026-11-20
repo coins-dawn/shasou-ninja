@@ -34,7 +34,12 @@
   #side label { display:flex; flex-direction:column; gap:3px; font-size:11px; color:var(--muted); }
   #side select { width:100%; font-size:13px; padding:3px 6px; }
   #side .mult { font-size:12px; color:var(--accent); margin:0; min-height:1.2em; }
-  #side .actions { margin-top:auto; display:flex; flex-direction:column; gap:8px; }
+  #side .actions { display:flex; flex-direction:column; gap:8px; }
+  /* PC: 題名 → 設定 → しゅっぱつ の間を同じ幅に（余りは出典の上に回す） */
+  body:not(.narrow) #side .cfg { padding-top:16px; }
+  body:not(.narrow) #side .actions { margin-top:16px; }
+  body:not(.narrow) #side .src { margin-top:auto; }
+  @media (max-height: 700px) { body:not(.narrow) #side .cfg { padding-top:4px; } body:not(.narrow) #side .actions { margin-top:4px; } } /* 低い画面では詰める */
   #side .actions button { width:100%; font-size:13px; padding:6px 10px; }
   #side .actions #start { font-size:17px; padding:9px 14px; }
   @media (max-height: 820px) { body:not(.narrow) #side .howto { display:none; } } /* 低い画面ではあそびかたは「このサービスについて」に */
@@ -262,9 +267,9 @@
 </div>
 
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-<script src="core.js?v=20261120e"></script>
-<script src="game.js?v=20261120e"></script>
-<script src="map3d.js?v=20261120e"></script>
-<script src="pax.js?v=20261120e"></script>
+<script src="core.js?v=20261120f"></script>
+<script src="game.js?v=20261120f"></script>
+<script src="map3d.js?v=20261120f"></script>
+<script src="pax.js?v=20261120f"></script>
 </body>
 </html>
