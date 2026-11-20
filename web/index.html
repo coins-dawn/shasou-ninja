@@ -21,7 +21,10 @@
   #side { flex:0 0 clamp(210px, 19vw, 280px); background:#000; color:var(--fg); display:flex; flex-direction:column; gap:12px;
     padding:16px 16px 10px; box-sizing:border-box; overflow-y:auto; z-index:40; }
   #side h1 { font-size:clamp(19px, 1.8vw, 26px); line-height:1.1; margin:0; font-weight:400; letter-spacing:.06em; }
-  #logoNinja { width:2.9em; height:2.37em; image-rendering:pixelated; image-rendering:crisp-edges; vertical-align:middle; position:relative; top:-.45em; margin:-1em 0 -1em -.62em; /* 絵の左の余白と、行の高さを広げないよう負のマージン */
+  #side h1#titleH { display:flex; align-items:center; gap:.3em; }
+  /* 題名の右（2 行ぶんの高さ）で走る忍者 */
+  #titleH .tt { white-space:nowrap; flex:0 0 auto; }
+  #logoNinja { flex:0 1 2.5em; min-width:1.6em; width:2.5em; height:auto; aspect-ratio:28/26; image-rendering:pixelated; image-rendering:crisp-edges; position:relative; top:-.05em;
     filter:drop-shadow(1px 0 0 #f4eedc) drop-shadow(-1px 0 0 #f4eedc) drop-shadow(0 1px 0 #f4eedc) drop-shadow(0 -1px 0 #f4eedc); }
   #side .subt { font-size:11px; color:var(--muted); margin:6px 0 0; }
   #side .howto { font-size:10px; color:var(--muted); line-height:1.6; margin:0; }
@@ -49,7 +52,7 @@
   body.narrow #side { flex:0 0 auto; padding:6px 10px 6px 14px; overflow:visible; }
   body.narrow #side h1 { font-size:20px; cursor:pointer; display:flex; align-items:center; white-space:nowrap; padding:8px 0; } /* 1 行で、アイコンは最後 */
   body.narrow #side h1 br { display:none; }
-  body.narrow #logoNinja { order:3; top:-.12em; margin:-.6em 0 -.6em -.25em; width:2.2em; height:1.8em; }
+  body.narrow #logoNinja { top:-.1em; margin:-.4em 0 -.4em .1em; flex:0 0 1.4em; min-width:0; width:1.4em; height:1.3em; }
   body.narrow #hamb { display:block; }
   /* 見た目は「このサービスについて」（.panel）とそろえる */
   body.narrow #side .cfg { display:none; position:fixed; z-index:30; left:50%; top:calc(50% + 28px); transform:translate(-50%,-50%);
@@ -174,7 +177,7 @@
 <div id="wrap">
   <aside id="side">
     <div class="brand">
-      <h1 id="titleH"><span>ぼくらの</span><canvas id="logoNinja" width="44" height="36" aria-hidden="true"></canvas><br><span>車窓ニンジャ</span></h1>
+      <h1 id="titleH"><span class="tt">ぼくらの<br>車窓ニンジャ</span><canvas id="logoNinja" width="28" height="26" aria-hidden="true"></canvas></h1>
       <!-- 三本線: Iconify mdi:menu（Apache-2.0） -->
       <button id="hamb" aria-label="メニュー" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2z"/></svg></button>
     </div>
@@ -257,9 +260,9 @@
 </div>
 
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-<script src="core.js?v=20261120b"></script>
-<script src="game.js?v=20261120b"></script>
-<script src="map3d.js?v=20261120b"></script>
-<script src="pax.js?v=20261120b"></script>
+<script src="core.js?v=20261120c"></script>
+<script src="game.js?v=20261120c"></script>
+<script src="map3d.js?v=20261120c"></script>
+<script src="pax.js?v=20261120c"></script>
 </body>
 </html>

@@ -1970,7 +1970,7 @@ function drawLogoNinja() {
   if (!c || !KL) return;
   const g = c.getContext('2d');
   g.clearRect(0, 0, c.width, c.height);
-  drawNinja(22, 31, g, 2, { kind: 'run', ph: performance.now() / 1000 * 7, rot: 0 });
+  drawNinja(14, 24, g, 2, { kind: 'run', ph: performance.now() / 1000 * 7, rot: 0 }); // 28×26 の升に、足の裏が下から 2 升目
 }
 window.ninjaCanvas = () => {
   if (!G || !KL) return null;
