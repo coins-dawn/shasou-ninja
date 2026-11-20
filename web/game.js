@@ -2019,19 +2019,12 @@ window.trainState = () => (G && SC ? { S: G.S, nx: G.S + G.off, y: G.y, bid: G.b
   leap: G.skip && !G.skip.water ? G.skip.u || 0 : -1, // ひとっとびで電車に貼りついている演出の進み具合（地図でも電車に飛びつく）
   d: G.bid >= 0 ? SC.near[G.bid].d : 0, h: G.bid >= 0 ? SC.near[G.bid].h : 0,
   dc: G.bid >= 0 ? latOf(G.bid) : 6, // 地図で忍者を置く奥行き（乗っている建物の上）
-  air: G.state === 'play' && !G.onGround && !G.skip, ...underNinja() } : null);
+} : null);
 // 地図で忍者・影を置く奥行き [m]: 建物の手前から 6m（奥行きの浅い建物は、その真ん中）
 function latOf(bi) {
   const b = SC.near[bi];
   if (b.lat === undefined) { let a = Infinity, z = -Infinity; for (const p of b.fp) { a = Math.min(a, p[1]); z = Math.max(z, p[1]); } b.lat = Math.min(b.d + 6, (a + z) / 2); }
   return b.lat;
-}
-// 忍者の真下（地図に影を落とすところ）: 着地できるいちばん高い屋根の建物と、その奥行き・高さ
-function underNinja() {
-  const nx = G.S + G.off, k = Math.round(nx / SC.step);
-  const r1 = roofUnder(nx), r2 = roof2Under(nx);
-  const ub = r2 > r1 && SC.pb2[k] >= 0 ? SC.pb2[k] : r1 > 0 ? bldgAt(nx) : -1;
-  return { ub, ud: ub >= 0 ? latOf(ub) : 0, gh: Math.max(r1, r2) };
 }
 
 function frame(ts) {

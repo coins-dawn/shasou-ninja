@@ -212,24 +212,6 @@ async function start() {
     }
     // 忍者の位置
     // 忍者（左の画面と同じドット絵を、乗っている屋根の高さぶん持ち上げて出す）
-    // 空中にいるあいだ、真下の屋根（なければ地面）に落とす影。屋根の上に薄い板を置く。高いほど小さく
-    map.addSource('nshadow', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-    map.addLayer({ id: 'nshadow', type: 'fill-extrusion', source: 'nshadow',
-      paint: { 'fill-extrusion-color': '#1e1830', 'fill-extrusion-base': ['get', 'b'], 'fill-extrusion-height': ['get', 'h'], 'fill-extrusion-opacity': 0.55 } });
-    const hOf = new Map(); // 建物番号（左の画面）→ 地図の建物の高さ
-    for (const f of bld.features) if (f.properties.ni >= 0) hOf.set(f.properties.ni, +f.properties.h || 0);
-    let shadowOn = false;
-    function updateShadow(st) {
-      const src = map.getSource('nshadow');
-      if (!st.air || st.state !== 'play') { if (shadowOn) { src.setData({ type: 'FeatureCollection', features: [] }); shadowOn = false; } return; }
-      const base = st.ub >= 0 ? (hOf.has(st.ub) ? hOf.get(st.ub) : st.gh) : 0; // 地図の建物の屋根の高さ
-      const up = Math.max(0, st.y - st.gh);
-      const r = 3.0 - 1.3 * Math.min(1, up / 25); // 高く跳ぶほど小さく
-      const cd = st.ub >= 0 ? st.ud : st.dc, ring = []; // 隙間の上では、忍者と同じ並び（地面）
-      for (let i = 0; i <= 14; i++) { const a = (i / 14) * Math.PI * 2; ring.push(offset(st.nx + Math.cos(a) * r * 1.2, cd + Math.sin(a) * r)); }
-      src.setData({ type: 'FeatureCollection', features: [{ type: 'Feature', properties: { b: base + 0.05, h: base + 0.3 }, geometry: { type: 'Polygon', coordinates: [ring] } }] });
-      shadowOn = true;
-    }
     const pin = document.createElement('canvas'); pin.width = 44; pin.height = 36; pin.className = 'ninja-sprite';
     const pctx = pin.getContext('2d');
     const ninja = new maplibregl.Marker({ element: pin, anchor: 'bottom' }).setLngLat(at(0)).addTo(map);
@@ -266,7 +248,7 @@ async function start() {
     function tick() {
       const st = window.trainState && window.trainState();
       if (!infoDone) applyInfo();
-      if (st) { updateWarn(st); updateShadow(st); }
+      if (st) updateWarn(st);
       if (st) {
         map.getSource('train').setData(trainFeatures(st.S));
         // 忍者は、乗っている建物のあたり（進む向きの左）
